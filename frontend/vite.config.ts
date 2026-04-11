@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     server: {
-      host: "0.0.0.0",
+      host: env.APP_HOST || "0.0.0.0",
       port: parseInt(env.FRONTEND_PORT) || 8080,
       watch: {
         usePolling: true,
