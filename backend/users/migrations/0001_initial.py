@@ -13,6 +13,10 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunSQL(
+            sql='CREATE SCHEMA IF NOT EXISTS auth;',
+            reverse_sql='DROP SCHEMA IF EXISTS auth CASCADE;'
+        ),
         migrations.CreateModel(
             name='User',
             fields=[

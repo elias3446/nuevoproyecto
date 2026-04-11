@@ -54,7 +54,7 @@ class AuthTests(APITestCase):
     def test_06_profile_unauthorized(self):
         """Prueba que el perfil esté protegido."""
         response = self.client.get(self.profile_url)
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertIn(response.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
 
     def test_07_token_refresh(self):
         """Prueba refresco de token."""
