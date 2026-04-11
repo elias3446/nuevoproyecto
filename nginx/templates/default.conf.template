@@ -1,0 +1,67 @@
+server {
+    listen ${NGINX_PORT};
+    server_name localhost ${SERVER_IP};
+
+    # Redirigir todo el tráfico HTTP a HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen ${NGINX_HTTPS_PORT} ssl;
+    server_name localhost ${SERVER_IP};
+
+    # Configuración SSL (Certificados auto-firmados)
+    ssl_certificate /etc/nginx/ssl/nginx.crt;
+    ssl_certificate_key /etc/nginx/ssl/nginx.key;
+    
+    # Protocolos y Cifrados recomendados
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    # Incluir tipos MIME para que el navegador reconozca CSS y JS correctamente
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    # Frontend (React/Vite build)
+    location / {
+        root /usr/share/nginx/html;
+        index index.html index.htm;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Bloque específico para assets de Vite (con caché agresiva)
+    location /assets/ {
+        root /usr/share/nginx/html;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    # Backend API
+    location /api/ {
+        proxy_pass http://backend:${APP_PORT}/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Django Admin
+    location /admin/ {
+        proxy_pass http://backend:${APP_PORT}/admin/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Archivos Estáticos de Django
+    location /static/ {
+        alias /app/staticfiles/;
+    }
+
+    # Archivos Media de Django
+    location /media/ {
+        alias /app/media/;
+    }
+}

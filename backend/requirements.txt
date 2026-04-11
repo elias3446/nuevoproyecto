@@ -1,0 +1,19 @@
+﻿django>=6.0
+djangorestframework
+djangorestframework-simplejwt
+django-cors-headers
+python-dotenv
+psycopg2-binary
+gunicorn
+
+# Redis
+redis
+django-redis
+channels
+channels-redis
+
+# Celery
+celery[redis]
+django-celery-beat
+django-celery-results
+
