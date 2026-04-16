@@ -41,7 +41,9 @@ services:
 
   # â”€â”€â”€ Nginx (Proxy Inverso) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   nginx:
-    build: ./nginx
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME}_nginx
     restart: unless-stopped
     ports:
@@ -117,7 +119,7 @@ services:
         condition: service_healthy
     command: >
       sh -c "python manage.py collectstatic --noinput &&
-             python manage.py migrate &&
+             python manage.py migrate --fake &&
              if [ \"$DEBUG\" = \"True\" ]; then
                echo 'Starting Development Server (runserver)...' &&
                python manage.py runserver 0.0.0.0:${APP_PORT};

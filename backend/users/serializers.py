@@ -23,3 +23,12 @@ class RegisterSerializer(serializers.ModelSerializer):
             password=validated_data['password']
         )
         return user
+
+class RegisterSuperuserSerializer(RegisterSerializer):
+    def create(self, validated_data):
+        # El método create_superuser del manager crea al usuario con is_staff=True y is_superuser=True
+        user = User.objects.create_superuser(
+            email=validated_data['email'],
+            password=validated_data['password']
+        )
+        return user

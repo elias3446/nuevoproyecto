@@ -2,7 +2,7 @@ server {
     listen ${NGINX_PORT};
     server_name localhost ${SERVER_IP};
 
-    # Redirigir todo el tráfico HTTP a HTTPS
+    # Redirigir todo el trÃ¡fico HTTP a HTTPS
     return 301 https://$host$request_uri;
 }
 
@@ -10,7 +10,7 @@ server {
     listen ${NGINX_HTTPS_PORT} ssl;
     server_name localhost ${SERVER_IP};
 
-    # Configuración SSL (Certificados auto-firmados)
+    # ConfiguraciÃ³n SSL (Certificados auto-firmados)
     ssl_certificate /etc/nginx/ssl/nginx.crt;
     ssl_certificate_key /etc/nginx/ssl/nginx.key;
     
@@ -29,7 +29,7 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
-    # Bloque específico para assets de Vite (con caché agresiva)
+    # Bloque especÃ­fico para assets de Vite (con cachÃ© agresiva)
     location /assets/ {
         root /usr/share/nginx/html;
         expires 1y;
@@ -55,7 +55,7 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Archivos Estáticos de Django
+    # Archivos EstÃ¡ticos de Django
     location /static/ {
         alias /app/staticfiles/;
     }

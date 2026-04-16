@@ -18,11 +18,25 @@ Asegúrate de tener instalados los siguientes programas en tu entorno:
    Asegúrate de tener en la raíz de tu proyecto un archivo oculto llamado `.env`. Este archivo contiene contraseñas de bases de datos, claves secretas y puertos. (Si acabas de descargar el proyecto, renombra el archivo `.env.example` a `.env` en caso de existir, o valida tu `.env` actual).
 
 2. **Levantar los Contenedores**
-   Abre una terminal (PowerShell o CMD en Windows) en la raíz del proyecto y ejecuta:
+   Abre una terminal (PowerShell o CMD en Windows) en la raíz del proyecto y elige el comando que mejor se adapte a tu necesidad actual:
+
+   **Opción A: Levantar TODO (Desarrollo y Producción a la vez)**
    ```bash
    docker-compose up -d --build
    ```
    *Nota: La primera vez descargará todas las dependencias e imágenes base, lo cual puede tardar unos minutos.*
+
+   **Opción B: Levantar SOLO en Modo Desarrollo (Recomendado para programar)**
+   Levanta la base de datos, Redis, el Backend, Celery y el servidor de desarrollo de Vite (Frontend en el puerto 3000). Omite compilar Nginx y la versión estática de producción.
+   ```bash
+   docker-compose up -d --build db redis backend frontend-dev celery-worker celery-beat
+   ```
+
+   **Opción C: Levantar SOLO en Modo Producción (Recomendado para probar despliegue)**
+   Levanta la base de datos, Redis, el Backend, Celery, compila el Frontend y levanta Nginx (HTTPS). Omite el servidor de desarrollo de Vite.
+   ```bash
+   docker-compose up -d --build db redis backend frontend nginx celery-worker celery-beat
+   ```
 
 ---
 

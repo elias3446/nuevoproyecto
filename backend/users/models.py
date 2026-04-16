@@ -13,37 +13,47 @@ class SupabaseUserManager(BaseUserManager):
         return user
 
     def create_superuser(self, email, password=None, **extra_fields):
-        extra_fields.setdefault('is_staff', True)
+        # Eliminamos is_staff e is_active de extra_fields ya que ahora son propiedades
+        extra_fields.pop('is_staff', None)
+        extra_fields.pop('is_active', None)
         extra_fields.setdefault('is_superuser', True)
         return self.create_user(email, password, **extra_fields)
 
 class User(AbstractBaseUser, PermissionsMixin):
-    """
-    Modelo de Usuario que mapea a la tabla auth.users de Supabase.
-    """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True, max_length=255)
     
-    # Campos obligatorios para Django Admin
-    is_active = models.BooleanField(default=True)
-    is_staff = models.BooleanField(default=False)
+    # Mapeos especiales para Supabase
+    password = models.CharField(max_length=255, db_column='encrypted_password')
+    last_login = models.DateTimeField(null=True, blank=True, db_column='last_sign_in_at')
+    is_superuser = models.BooleanField(default=False, db_column='is_super_admin')
     
     # Metadata estilo Supabase
     raw_app_meta_data = models.JSONField(default=dict, blank=True)
     raw_user_meta_data = models.JSONField(default=dict, blank=True)
     
-    # Auditoría (compatibles con Supabase)
+    # AuditorÃ­a (compatibles con Supabase)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    last_sign_in_at = models.DateTimeField(null=True, blank=True)
-
+    
     objects = SupabaseUserManager()
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
 
+    # --- Atributos Virtuales (No se guardan en la DB) ---
+    @property
+    def is_staff(self):
+        # En Supabase, si eres super_admin, eres staff para Django
+        return self.is_superuser
+
+    @property
+    def is_active(self):
+        # PodrÃ­amos vincularlo a 'email_confirmed_at', pero por ahora 
+        # devolvemos True para no bloquear el acceso.
+        return True
+
     class Meta:
-        # IMPORTANTE: Esto le dice a Django que use el esquema 'auth' y la tabla 'users'
         db_table = '"auth"."users"'
         verbose_name = 'usuario'
         verbose_name_plural = 'usuarios'

@@ -3,7 +3,7 @@
 # No hay valores hardcodeados en este archivo.
 # ─────────────────────────────────────────────────────────────────────────────
 
-ARG PYTHON_VERSION
+ARG PYTHON_VERSION=3.12-slim
 ARG APP_DIR
 ARG APP_HOST
 ARG APP_PORT

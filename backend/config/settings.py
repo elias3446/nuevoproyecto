@@ -1,4 +1,4 @@
-﻿"""
+"""
 Django settings for config project.
 """
 
@@ -18,7 +18,24 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-fallback-key')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+if DEBUG:
+    ALLOWED_HOSTS = ['*']
+else:
+    # ALLOWED_HOSTS logic with variable expansion
+    _raw_hosts = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+    _server_ip = os.environ.get('SERVER_IP', '')
+
+    ALLOWED_HOSTS = []
+    for host in _raw_hosts:
+        clean_host = host.strip()
+        if clean_host == '${SERVER_IP}' and _server_ip:
+            ALLOWED_HOSTS.append(_server_ip)
+        elif clean_host:
+            ALLOWED_HOSTS.append(clean_host)
+
+    # Aseguramos que la IP del servidor estÃ© siempre presente si existe
+    if _server_ip and _server_ip not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_server_ip)
 
 
 # Application definition
@@ -97,22 +114,31 @@ DATABASES = {
         'PASSWORD': os.environ.get('DB_PASSWORD', ''),
         'HOST':     _db_host,
         'PORT':     os.environ.get('DB_PORT', '5432'),
-        'OPTIONS':  _db_options,  # sslmode=require solo para Supabase cloud
+        'OPTIONS':  {
+            **_db_options,
+            'options': '-c search_path=public,auth,storage,celery,jwt,django',
+        },
     }
 }
+
+# Registramos el Router de Esquemas para Celery, JWT y Django internals
+DATABASE_ROUTERS = ['config.routers.SchemaRouter']
 
 
 # Auth
 AUTH_USER_MODEL = 'users.User'
 
-# REST Framework settings
+# REST Framework & JWT settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
 }
 
 # SimpleJWT settings
@@ -155,18 +181,7 @@ CORS_ALLOWED_ORIGINS = [
     for origin in os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
 ]
 
-# Django REST Framework
-REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
-    ],
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.BasicAuthentication',
-    ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
-}
+# SimpleJWT settings (already configured above)
 
 
 # â”€â”€â”€ Redis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
