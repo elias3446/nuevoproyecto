@@ -12,33 +12,35 @@ const LoginForm = () => {
   } = useLogin();
 
   return (
-    <form onSubmit={handleLogin} className="space-y-6">
+    <form onSubmit={handleLogin} className="form-group">
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">Correo Electrónico</label>
+        <label className="form-label">Correo Electrónico</label>
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className="w-full px-4 py-3 rounded-lg bg-gray-900 border border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 text-white outline-none transition-all"
+          className="form-input"
+          placeholder="email@ejemplo.com"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">Contraseña</label>
+        <label className="form-label">Contraseña</label>
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          className="w-full px-4 py-3 rounded-lg bg-gray-900 border border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 text-white outline-none transition-all"
+          className="form-input"
+          placeholder="••••••••"
         />
       </div>
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:opacity-50"
+        className="form-button-primary"
       >
-        {loading ? "Entrando..." : "Entrar"}
+        {loading ? "Entrando..." : "Entrar al Sistema"}
       </button>
     </form>
   );

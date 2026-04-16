@@ -106,18 +106,32 @@ def create_test_schemas(sender, **kwargs):
 
 post_migrate.connect(create_test_schemas)
 
+# Database config base
+_db_base = {
+    'ENGINE':   'django.db.backends.postgresql',
+    'NAME':     os.environ.get('DB_NAME', 'postgres'),
+    'USER':     os.environ.get('DB_USER', 'postgres'),
+    'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+    'HOST':     _db_host,
+    'PORT':     os.environ.get('DB_PORT', '5432'),
+}
+
 DATABASES = {
     'default': {
-        'ENGINE':   'django.db.backends.postgresql',
-        'NAME':     os.environ.get('DB_NAME', 'postgres'),
-        'USER':     os.environ.get('DB_USER', 'postgres'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-        'HOST':     _db_host,
-        'PORT':     os.environ.get('DB_PORT', '5432'),
-        'OPTIONS':  {
-            **_db_options,
-            'options': '-c search_path=public,auth,storage,celery,jwt,django',
-        },
+        **_db_base,
+        'OPTIONS': { **_db_options, 'options': '-c search_path=django' },
+    },
+    'celery_db': {
+        **_db_base,
+        'OPTIONS': { **_db_options, 'options': '-c search_path=celery' },
+    },
+    'jwt_db': {
+        **_db_base,
+        'OPTIONS': { **_db_options, 'options': '-c search_path=jwt' },
+    },
+    'auth_db': {
+        **_db_base,
+        'OPTIONS': { **_db_options, 'options': '-c search_path=auth' },
     }
 }
 

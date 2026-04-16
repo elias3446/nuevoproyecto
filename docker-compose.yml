@@ -119,7 +119,10 @@ services:
         condition: service_healthy
     command: >
       sh -c "python manage.py collectstatic --noinput &&
-             python manage.py migrate --fake &&
+             python manage.py migrate --database=default --fake &&
+             python manage.py migrate --database=celery_db --fake &&
+             python manage.py migrate --database=jwt_db --fake &&
+             python manage.py migrate --database=auth_db --fake &&
              if [ \"$DEBUG\" = \"True\" ]; then
                echo 'Starting Development Server (runserver)...' &&
                python manage.py runserver 0.0.0.0:${APP_PORT};

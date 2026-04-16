@@ -3,9 +3,10 @@ import LoginForm from "@/components/auth/LoginForm";
 
 const Login = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 px-4">
-      <div className="max-w-md w-full bg-gray-800 rounded-xl shadow-2xl p-8 border border-gray-700">
-        <h2 className="text-3xl font-bold text-white text-center mb-6">Iniciar Sesión</h2>
+    <div className="auth-page">
+      <div className="auth-card">
+        <h2 className="auth-header">Iniciar Sesión</h2>
+        <p className="auth-subtext">Ingresa tus credenciales para acceder</p>
         <LoginForm />
       </div>
     </div>

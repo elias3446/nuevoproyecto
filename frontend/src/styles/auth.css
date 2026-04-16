@@ -1,0 +1,18 @@
+@layer components {
+  /* Estilos específicos para páginas de autenticación y setup */
+  .auth-page {
+    @apply page-container;
+  }
+
+  .auth-card {
+    @apply content-card;
+  }
+
+  .auth-header {
+    @apply form-title;
+  }
+
+  .auth-subtext {
+    @apply form-description;
+  }
+}
