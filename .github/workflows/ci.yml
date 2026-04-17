@@ -19,7 +19,7 @@ jobs:
         sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=postgres/g' .env
 
     - name: Build and run Docker containers
-      run: docker-compose up -d --build
+      run: docker compose up -d --build
 
     - name: Wait for services to be healthy
       run: |
@@ -41,4 +41,4 @@ jobs:
 
     - name: Shutdown Docker
       if: always()
-      run: docker-compose down
+      run: docker compose down
