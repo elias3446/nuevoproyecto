@@ -43,11 +43,8 @@ jobs:
     - name: Run pip-audit Scan
       run: python -m pip_audit -r backend/requirements.txt
 
-    - name: Docker Image Scan (Trivy)
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: 'python:3.12-slim'
-        format: 'table'
-        exit-code: '0'
-        ignore-unfixed: true
-        severity: 'CRITICAL,HIGH'
+    - name: Docker Image Scan (Trivy for Windows)
+      run: |
+        Invoke-WebRequest -Uri "https://github.com/aquasecurity/trivy/releases/download/v0.49.1/trivy_0.49.1_windows-64bit.zip" -OutFile "trivy.zip"
+        Expand-Archive trivy.zip -DestinationPath trivy-bin -Force
+        ./trivy-bin/trivy.exe image --exit-code 0 --severity CRITICAL,HIGH --ignore-unfixed python:3.12-slim
