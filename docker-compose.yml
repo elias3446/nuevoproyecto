@@ -63,6 +63,7 @@ services:
   frontend:
     build:
       context: ./frontend
+      dockerfile: Dockerfile
       target: production
     container_name: ${COMPOSE_PROJECT_NAME}_frontend
     volumes:
@@ -73,6 +74,7 @@ services:
   frontend-dev:
     build:
       context: ./frontend
+      dockerfile: Dockerfile
       target: development
     container_name: ${COMPOSE_PROJECT_NAME}_frontend_dev
     restart: unless-stopped

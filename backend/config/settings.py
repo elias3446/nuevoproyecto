@@ -92,19 +92,9 @@ WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
 
-# Database â€” local Docker or Supabase cloud
+# â”€â”€â”€ Database Configuration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _db_host = os.environ.get('DB_HOST', 'localhost')
 _db_options = {'sslmode': 'require'} if 'supabase.co' in _db_host else {}
-
-# Pre-test schema creation
-from django.db.models.signals import post_migrate
-def create_test_schemas(sender, **kwargs):
-    from django.db import connection
-    if 'test' in sender.name:
-        with connection.cursor() as cursor:
-            cursor.execute("CREATE SCHEMA IF NOT EXISTS auth;")
-
-post_migrate.connect(create_test_schemas)
 
 # Database config base
 _db_base = {
@@ -116,27 +106,54 @@ _db_base = {
     'PORT':     os.environ.get('DB_PORT', '5432'),
 }
 
-DATABASES = {
-    'default': {
-        **_db_base,
-        'OPTIONS': { **_db_options, 'options': '-c search_path=django' },
-    },
-    'celery_db': {
-        **_db_base,
-        'OPTIONS': { **_db_options, 'options': '-c search_path=celery' },
-    },
-    'jwt_db': {
-        **_db_base,
-        'OPTIONS': { **_db_options, 'options': '-c search_path=jwt' },
-    },
-    'auth_db': {
-        **_db_base,
-        'OPTIONS': { **_db_options, 'options': '-c search_path=auth' },
-    }
-}
+import sys
+IS_TESTING = 'test' in sys.argv
 
-# Registramos el Router de Esquemas para Celery, JWT y Django internals
-DATABASE_ROUTERS = ['config.routers.SchemaRouter']
+if IS_TESTING:
+    # Para tests usamos una sola base de datos y manejamos esquemas vÃ­a search_path
+    DATABASES = {
+        'default': {
+            **_db_base,
+            'OPTIONS': { 
+                **_db_options, 
+                'options': '-c search_path=django,auth,celery,jwt,public' 
+            },
+        }
+    }
+    DATABASE_ROUTERS = []
+    
+    # Crear esquemas necesarios en la base de datos de test
+    from django.db.models.signals import pre_migrate
+    def create_test_schemas(sender, **kwargs):
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("CREATE SCHEMA IF NOT EXISTS django;")
+            cursor.execute("CREATE SCHEMA IF NOT EXISTS auth;")
+            cursor.execute("CREATE SCHEMA IF NOT EXISTS celery;")
+            cursor.execute("CREATE SCHEMA IF NOT EXISTS jwt;")
+    pre_migrate.connect(create_test_schemas)
+else:
+    # ConfiguraciÃ³n normal multi-esquema
+    DATABASES = {
+        'default': {
+            **_db_base,
+            'OPTIONS': { **_db_options, 'options': '-c search_path=django' },
+        },
+        'celery_db': {
+            **_db_base,
+            'OPTIONS': { **_db_options, 'options': '-c search_path=celery' },
+        },
+        'jwt_db': {
+            **_db_base,
+            'OPTIONS': { **_db_options, 'options': '-c search_path=jwt' },
+        },
+        'auth_db': {
+            **_db_base,
+            'OPTIONS': { **_db_options, 'options': '-c search_path=auth' },
+        }
+    }
+    DATABASE_ROUTERS = ['config.routers.SchemaRouter']
+
 
 
 # Auth

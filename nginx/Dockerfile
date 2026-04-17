@@ -1,6 +1,6 @@
 FROM nginx:1.25-alpine
 
-# Borrar configuraciÃ³n por defecto
+# Borrar configuración por defecto
 RUN rm /etc/nginx/conf.d/default.conf
 
 # Generar certificado SSL auto-firmado para pruebas
@@ -11,9 +11,9 @@ RUN apk add --no-cache openssl && \
     -out /etc/nginx/ssl/nginx.crt \
     -subj "/C=EC/ST=General/L=City/O=LocalApp/OU=Dev/CN=localhost"
 
-# Copiar plantilla para envsubst (la imagen oficial la procesa automÃ¡ticamente)
+# Copiar plantilla para envsubst (la imagen oficial la procesa automáticamente)
 COPY templates/default.conf.template /etc/nginx/templates/default.conf.template
 
-# Directorios para persistencia de archivos estÃ¡ticos y media
+# Directorios para persistencia de archivos estáticos y media
 RUN mkdir -p /app/staticfiles
 RUN mkdir -p /app/media
