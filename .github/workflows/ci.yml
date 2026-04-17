@@ -35,9 +35,18 @@ jobs:
 
     - name: Run Backend Tests with Coverage
       run: |
-        docker exec myapp_backend pip install coverage
-        docker exec myapp_backend coverage run manage.py test tests --noinput
-        docker exec myapp_backend coverage report
+        docker compose exec -T backend pip install coverage
+        docker compose exec -T backend coverage run manage.py test tests --noinput
+        docker compose exec -T backend coverage report
+        docker compose exec -T backend coverage xml -o coverage.xml
+        # Copy the xml file from container to host so SonarCloud can see it
+        docker cp myapp_backend:/app/coverage.xml .
+
+    - name: SonarCloud Scan
+      uses: sonarsource/sonarcloud-github-action@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
     - name: Shutdown Docker
       if: always()
