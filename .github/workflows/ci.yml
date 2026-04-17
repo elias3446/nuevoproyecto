@@ -42,6 +42,8 @@ jobs:
         docker compose exec -T backend coverage xml -o coverage.xml
         # Copy the xml file from container to host so SonarCloud can see it
         docker cp myapp_backend:/app/coverage.xml .
+        # Fix paths in coverage.xml to match project root
+        sed -i 's/filename="/filename="backend\//g' coverage.xml
 
     - name: SonarCloud Scan
       uses: SonarSource/sonarqube-scan-action@v5.0.0
