@@ -29,13 +29,14 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    - name: Setup Snyk CLI
+      uses: snyk/actions/setup@master
+
     - name: Run Snyk to check for vulnerabilities
-      uses: snyk/actions/python-3.12@master
+      run: snyk test --file=backend/requirements.txt
       continue-on-error: true # Don't block the build if Snyk finds issues, just report
       env:
         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      with:
-        args: --file=backend/requirements.txt
 
     - name: Install pip-audit
       run: pip install pip-audit
