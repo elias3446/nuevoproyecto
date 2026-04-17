@@ -1,0 +1,47 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ "main", "docker-infrastructure" ]
+  pull_request:
+    branches: [ "main", "docker-infrastructure" ]
+
+jobs:
+  python-security:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install Bandit
+      run: pip install bandit
+
+    - name: Run Bandit Scan
+      run: bandit -r backend/ -x backend/tests/ -ll
+      # -ll means show medium and high severity findings
+
+  vulnerability-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run Snyk to check for vulnerabilities
+      uses: snyk/actions/python-3.12@master
+      continue-on-error: true # Don't block the build if Snyk finds issues, just report
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --file=backend/requirements.txt
+
+    - name: Docker Image Scan (Trivy)
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'python:3.12-slim'
+        format: 'table'
+        exit-code: '0'
+        ignore-unfixed: true
+        severity: 'CRITICAL,HIGH'
