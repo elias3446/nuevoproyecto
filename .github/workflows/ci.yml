@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment: SONAR
     
     steps:
@@ -22,13 +22,13 @@ jobs:
         sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=postgres/g' .env
 
     - name: Build and run Docker containers
-      run: docker compose up -d --build
+      run: docker compose -f docker-compose.ci.yml up -d --build
 
     - name: Wait for services to be healthy
       run: |
         # Poll for health status
         for i in {1..30}; do
-          if [ "$(docker inspect -f '{{.State.Health.Status}}' myapp_db)" == "healthy" ]; then
+          if [ "$(docker inspect -f '{{.State.Health.Status}}' ci_myapp_db)" == "healthy" ]; then
             echo "Database is healthy!"
             break
           fi
@@ -38,11 +38,11 @@ jobs:
 
     - name: Run Backend Tests with Coverage
       run: |
-        docker compose exec -T backend pip install coverage
-        docker compose exec -T backend coverage run manage.py test tests --noinput
-        docker compose exec -T backend coverage xml -o coverage.xml
+        docker compose -f docker-compose.ci.yml exec -T backend pip install coverage
+        docker compose -f docker-compose.ci.yml exec -T backend coverage run manage.py test tests --noinput
+        docker compose -f docker-compose.ci.yml exec -T backend coverage xml -o coverage.xml
         # Copy the xml file from container to the project root
-        docker cp myapp_backend:/app/coverage.xml .
+        docker cp ci_myapp_backend:/app/coverage.xml .
         # Fix paths in coverage.xml: replace internal /app with ./ and prefix all filenames with backend/
         sed -i 's|<source>/app</source>|<source>./</source>|g' coverage.xml
         sed -i 's|filename="|filename="backend/|g' coverage.xml
@@ -57,4 +57,4 @@ jobs:
 
     - name: Shutdown Docker
       if: always()
-      run: docker compose down
+      run: docker compose -f docker-compose.ci.yml down
