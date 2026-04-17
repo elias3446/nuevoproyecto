@@ -39,12 +39,13 @@ jobs:
         docker compose exec -T backend pip install coverage
         docker compose exec -T backend coverage run manage.py test tests --noinput
         docker compose exec -T backend coverage xml -o coverage.xml
-        # Copy the xml file from container to the backend folder
-        docker cp myapp_backend:/app/coverage.xml backend/coverage.xml
-        # Fix the source path in the XML to be relative to the backend folder
-        sed -i 's|<source>/app</source>|<source>.</source>|g' backend/coverage.xml
-        # Debug: check the first lines
-        head -n 20 backend/coverage.xml
+        # Copy the xml file from container to the project root
+        docker cp myapp_backend:/app/coverage.xml .
+        # Fix paths in coverage.xml: replace internal /app with ./ and prefix all filenames with backend/
+        sed -i 's|<source>/app</source>|<source>./</source>|g' coverage.xml
+        sed -i 's|filename="|filename="backend/|g' coverage.xml
+        # Debug: check the mapping results
+        head -n 20 coverage.xml
 
     - name: SonarCloud Scan
       uses: SonarSource/sonarqube-scan-action@v5.0.0
