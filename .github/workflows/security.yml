@@ -37,6 +37,12 @@ jobs:
       with:
         args: --file=backend/requirements.txt
 
+    - name: Install pip-audit
+      run: pip install pip-audit
+
+    - name: Run pip-audit Scan
+      run: pip-audit -r backend/requirements.txt
+
     - name: Docker Image Scan (Trivy)
       uses: aquasecurity/trivy-action@master
       with:
