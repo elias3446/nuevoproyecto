@@ -21,7 +21,7 @@ jobs:
       run: pip install bandit
 
     - name: Run Bandit Scan
-      run: bandit -r backend/ -x backend/tests/ -ll
+      run: python -m bandit -r backend/ -x backend/tests/ -ll
       # -ll means show medium and high severity findings
 
   vulnerability-scan:
@@ -41,7 +41,7 @@ jobs:
       run: pip install pip-audit
 
     - name: Run pip-audit Scan
-      run: pip-audit -r backend/requirements.txt
+      run: python -m pip_audit -r backend/requirements.txt
 
     - name: Docker Image Scan (Trivy)
       uses: aquasecurity/trivy-action@master
