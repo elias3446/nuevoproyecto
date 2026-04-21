@@ -1,0 +1,210 @@
+services:
+
+  # â”€â”€â”€ PostgreSQL local (rÃ©plica Supabase) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  db:
+    image: postgres:17
+    container_name: ${ATS_PROJECT_NAME}_db
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT}:${DB_PORT}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/db:/docker-entrypoint-initdb.d
+    command: postgres -p ${DB_PORT} -c wal_level=logical -c max_replication_slots=10 -c max_wal_senders=10
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-p", "${DB_PORT}", "-U", "${DB_USER}", "-d", "${DB_NAME}" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # â”€â”€â”€ Redis (Cache / Channels) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  redis:
+    image: redis:7
+    container_name: ${ATS_PROJECT_NAME}_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT}:${REDIS_PORT}"
+    command: redis-server --port ${REDIS_PORT}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-p", "${REDIS_PORT}", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # â”€â”€â”€ Nginx (Proxy Inverso) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: ${ATS_PROJECT_NAME}_nginx
+    restart: unless-stopped
+    ports:
+      - "${NGINX_PORT}:${NGINX_PORT}"
+      - "${NGINX_HTTPS_PORT}:${NGINX_HTTPS_PORT}"
+    volumes:
+      - frontend_assets:/usr/share/nginx/html:ro
+      - static_volume:/app/staticfiles:ro
+      - media_volume:/app/media:ro
+    env_file:
+      - .env
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+
+  # â”€â”€â”€ Frontend (Build) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        VITE_PUBLIC_PORTAL_URL_DEV: ${VITE_PUBLIC_PORTAL_URL_DEV}
+        VITE_PUBLIC_PORTAL_URL_PROD: ${VITE_PUBLIC_PORTAL_URL_PROD}
+    container_name: ${ATS_PROJECT_NAME}_frontend
+    volumes:
+      - frontend_assets:/app/dist_shared
+    command: sh -c "rm -rf /app/dist_shared/* && cp -r /app/dist/* /app/dist_shared/ && echo 'Assets synchronized' && sleep 2147483647"
+
+  # ─── Frontend (Development) ────────────────────────────────────────────────
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: ${ATS_PROJECT_NAME}_frontend_dev
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT}:${FRONTEND_PORT}"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # Evita sobreescribir node_modules del contenedor con los del host
+    env_file:
+      - .env
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:${APP_PORT}
+    depends_on:
+      - backend
+    command: npm run dev -- --host 0.0.0.0 --port ${FRONTEND_PORT}
+
+  # â”€â”€â”€ Django Backend â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        PYTHON_VERSION: ${PYTHON_VERSION}
+        APP_DIR: ${APP_DIR}
+        APP_HOST: ${APP_HOST}
+        APP_PORT: ${APP_PORT}
+        GUNICORN_WORKERS: ${GUNICORN_WORKERS}
+        DJANGO_WSGI: ${DJANGO_WSGI}
+    container_name: ${ATS_PROJECT_NAME}_backend
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    env_file:
+      - .env
+    # En producciÃ³n no solemos exponer el puerto del backend directamente si usamos Nginx
+    ports:
+      - "${APP_PORT}:${APP_PORT}"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); s.settimeout(1); s.connect(('127.0.0.1', int('${APP_PORT}')))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    command: >
+      sh -c "python manage.py collectstatic --noinput &&
+             python manage.py migrate --database=default --noinput &&
+             python manage.py migrate --database=celery_db --noinput &&
+             python manage.py migrate --database=jwt_db --noinput &&
+             python manage.py migrate --database=auth_db users --fake --noinput &&
+             python manage.py migrate --database=auth_db --noinput &&
+             if [ \"$DEBUG\" = \"True\" ]; then
+               echo 'Starting Development Server (runserver)...' &&
+               python manage.py runserver 0.0.0.0:${APP_PORT};
+             else
+               echo 'Starting Production Server (gunicorn)...' &&
+               gunicorn ${DJANGO_WSGI} --bind 0.0.0.0:${APP_PORT} --workers ${GUNICORN_WORKERS};
+             fi"
+
+  # â”€â”€â”€ Celery Worker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        PYTHON_VERSION: ${PYTHON_VERSION}
+        APP_DIR: ${APP_DIR}
+        APP_HOST: ${APP_HOST}
+        APP_PORT: ${APP_PORT}
+        GUNICORN_WORKERS: ${GUNICORN_WORKERS}
+        DJANGO_WSGI: ${DJANGO_WSGI}
+    container_name: ${ATS_PROJECT_NAME}_celery_worker
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A config worker --loglevel=info
+
+  # â”€â”€â”€ Celery Beat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        PYTHON_VERSION: ${PYTHON_VERSION}
+        APP_DIR: ${APP_DIR}
+        APP_HOST: ${APP_HOST}
+        APP_PORT: ${APP_PORT}
+        GUNICORN_WORKERS: ${GUNICORN_WORKERS}
+        DJANGO_WSGI: ${DJANGO_WSGI}
+    container_name: ${ATS_PROJECT_NAME}_celery_beat
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+volumes:
+  postgres_data:
+  redis_data:
+  static_volume:
+  media_volume:
+  frontend_assets:
+
+
+networks:
+  default:
+    name: ${ATS_PROJECT_NAME}_network
