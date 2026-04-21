@@ -1,0 +1,30 @@
+@layer components {
+  /* Estilos específicos para páginas de autenticación y setup */
+  .auth-page {
+    @apply page-container;
+  }
+
+  .auth-card {
+    @apply content-card;
+  }
+
+  .auth-header {
+    @apply form-title;
+  }
+
+  .auth-subtext {
+    @apply form-description;
+  }
+
+  .auth-footer {
+    @apply mt-6 text-center;
+  }
+
+  .auth-footer-text {
+    @apply text-slate-400 text-sm;
+  }
+
+  .auth-footer-link {
+    @apply text-blue-500 hover:text-blue-400 text-sm font-semibold;
+  }
+}

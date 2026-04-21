@@ -1,0 +1,54 @@
+services:
+
+  # ─── Nginx (Portal de Candidatos) ───────────────────────────────────────────
+  portal-nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: ${PORTAL_PROJECT_NAME}_nginx
+    restart: unless-stopped
+    ports:
+      - "${PORTAL_NGINX_PORT}:${PORTAL_NGINX_PORT}"
+      - "${PORTAL_NGINX_HTTPS_PORT}:${PORTAL_NGINX_HTTPS_PORT}"
+    volumes:
+      - portal_frontend_assets:/usr/share/nginx/html:ro
+    env_file:
+      - .env
+    depends_on:
+      - portal-frontend
+
+  # ─── Frontend Producción (Portal de Candidatos) ─────────────────────────────
+  portal-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+    container_name: ${PORTAL_PROJECT_NAME}_frontend
+    volumes:
+      - portal_frontend_assets:/app/dist_shared
+    command: sh -c "rm -rf /app/dist_shared/* && cp -r /app/dist/* /app/dist_shared/ && echo 'Assets synchronized' && sleep 2147483647"
+
+  # ─── Frontend Desarrollo (Portal de Candidatos) ─────────────────────────────
+  portal-frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: ${PORTAL_PROJECT_NAME}_frontend_dev
+    restart: unless-stopped
+    ports:
+      - "${PORTAL_DEV_PORT}:${PORTAL_DEV_PORT}"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    env_file:
+      - .env
+    command: npm run dev -- --host 0.0.0.0 --port ${PORTAL_DEV_PORT}
+
+volumes:
+  portal_frontend_assets:
+
+
+networks:
+  default:
+    name: ${PORTAL_PROJECT_NAME}_network
