@@ -289,7 +289,11 @@ CELERY_RESULT_EXTENDED = True
 CELERY_BEAT_SCHEDULE = {
     'cleanup-expired-tokens': {
         'task': 'cleanup_expired_tokens',
-        'schedule': 86400.0,  # Daily (24 hours in seconds)
+        'schedule': 86400.0,
+    },
+    'cleanup-inactive-sessions': {
+        'task': 'cleanup_inactive_sessions',
+        'schedule': 86400.0,
     },
 }
 

@@ -33,3 +33,28 @@ def cleanup_expired_tokens():
     except Exception as e:
         logger.error(f"Error en cleanup_expired_tokens: {str(e)}")
         return f"Error: {str(e)}"
+
+
+@shared_task(name='cleanup_inactive_sessions')
+def cleanup_inactive_sessions():
+    """
+    Cleanup sesiones de usuario inactivas por más de 30 días.
+    Se ejecuta diariamente via Celery Beat.
+    """
+    try:
+        from .models import UserSession
+        
+        GRACE_PERIOD = timedelta(days=30)
+        cutoff = timezone.now() - GRACE_PERIOD
+        
+        inactive_count = UserSession.objects.filter(
+            last_used__lt=cutoff,
+            is_active=True
+        ).update(is_active=False)
+        
+        logger.info(f"Cleanup: {inactive_count} sesiones marcadas como inactivas")
+        
+        return f"{inactive_count} sesiones inactivas limpiadas"
+    except Exception as e:
+        logger.error(f"Error en cleanup_inactive_sessions: {str(e)}")
+        return f"Error: {str(e)}"

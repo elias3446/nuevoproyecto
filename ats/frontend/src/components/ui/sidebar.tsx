@@ -1,10 +1,12 @@
 import { Menu, LogOut, Globe } from "lucide-react";
 import { ReactNode } from "react";
+import { Link } from "react-router-dom";
 
 export type NavItem = {
   id: string;
   label: string;
   icon: ReactNode;
+  link?: string;
 };
 
 interface SidebarProps {
@@ -49,25 +51,46 @@ export const Sidebar = ({
         <ul className="space-y-2 px-3">
           {navigation.map((item) => (
             <li key={item.id}>
-              <button
-                onClick={() => setActivePage(item.id)}
-                onMouseDown={(e) => e.preventDefault()}
-                className={`w-full flex items-center p-3 rounded-xl outline-none transition-all duration-200 border ${
-                  activePage === item.id 
-                    ? "bg-blue-600/20 text-blue-400 border-blue-500/30 shadow-[0_0_15px_rgba(37,99,235,0.15)]" 
-                    : "border-transparent text-gray-400 hover:bg-gray-700/50 hover:text-gray-200"
-                }`}
-                title={!isSidebarOpen ? item.label : ""}
-              >
-                <span className="flex-shrink-0 flex items-center justify-center w-6">
-                  {item.icon}
-                </span>
-                {isSidebarOpen && (
-                  <span className="ml-3 font-medium whitespace-nowrap transition-opacity duration-200">
-                    {item.label}
+              {item.link ? (
+                <Link
+                  to={item.link}
+                  className={`w-full flex items-center p-3 rounded-xl outline-none transition-all duration-200 border ${
+                    activePage === item.id 
+                      ? "bg-blue-600/20 text-blue-400 border-blue-500/30 shadow-[0_0_15px_rgba(37,99,235,0.15)]" 
+                      : "border-transparent text-gray-400 hover:bg-gray-700/50 hover:text-gray-200"
+                  }`}
+                  title={!isSidebarOpen ? item.label : ""}
+                >
+                  <span className="flex-shrink-0 flex items-center justify-center w-6">
+                    {item.icon}
                   </span>
-                )}
-              </button>
+                  {isSidebarOpen && (
+                    <span className="ml-3 font-medium whitespace-nowrap transition-opacity duration-200">
+                      {item.label}
+                    </span>
+                  )}
+                </Link>
+              ) : (
+                <button
+                  onClick={() => setActivePage(item.id)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  className={`w-full flex items-center p-3 rounded-xl outline-none transition-all duration-200 border ${
+                    activePage === item.id 
+                      ? "bg-blue-600/20 text-blue-400 border-blue-500/30 shadow-[0_0_15px_rgba(37,99,235,0.15)]" 
+                      : "border-transparent text-gray-400 hover:bg-gray-700/50 hover:text-gray-200"
+                  }`}
+                  title={!isSidebarOpen ? item.label : ""}
+                >
+                  <span className="flex-shrink-0 flex items-center justify-center w-6">
+                    {item.icon}
+                  </span>
+                  {isSidebarOpen && (
+                    <span className="ml-3 font-medium whitespace-nowrap transition-opacity duration-200">
+                      {item.label}
+                    </span>
+                  )}
+                </button>
+              )}
             </li>
           ))}
         </ul>

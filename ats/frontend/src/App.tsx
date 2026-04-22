@@ -9,6 +9,7 @@ import SuperuserSetup from "./pages/SuperuserSetup.tsx";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Register from "./pages/Register.tsx";
+import Security from "./pages/Security.tsx";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ const RootContainer = () => {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/security" element={<Security />} />
         <Route 
           path="/" 
           element={
