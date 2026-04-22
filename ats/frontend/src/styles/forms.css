@@ -31,4 +31,18 @@
   .form-button-link {
     @apply inline-block px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-600/20;
   }
+
+  .form-checkbox {
+    @apply flex items-center gap-3;
+  }
+
+  .form-checkbox-input {
+    @apply w-5 h-5 rounded bg-slate-900/50 border border-slate-700 
+           text-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500
+           cursor-pointer accent-blue-500;
+  }
+
+  .form-checkbox-label {
+    @apply text-sm text-slate-300 cursor-pointer select-none;
+  }
 }

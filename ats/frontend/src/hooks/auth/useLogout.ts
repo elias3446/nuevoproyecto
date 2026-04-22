@@ -1,17 +1,13 @@
-import { api } from "@/integrations/backend/client";
+import { api, clearTokens } from "@/integrations/backend/client";
 
 export const useLogout = () => {
   const handleLogout = async () => {
     try {
-      const refreshToken = localStorage.getItem("refresh_token");
-      if (refreshToken) {
-        await api.post("/logout/", { refresh: refreshToken });
-      }
+      await api.post("/logout/", {}, { withCredentials: true });
     } catch (error) {
       console.error("Error al invalidar el token en el servidor", error);
     } finally {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
+      clearTokens();
       window.location.href = "/login";
     }
   };
