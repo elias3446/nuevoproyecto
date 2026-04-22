@@ -6,11 +6,15 @@ class SchemaRouter:
         'django_celery_beat':    'celery_db',
         'django_celery_results': 'celery_db',
         'token_blacklist':       'jwt_db',
-        'users':                 'auth_db',
-        'auth':                  'default', # django schemas
-        'admin':                 'default',
-        'sessions':              'default',
-        'contenttypes':          'default',
+        'users':                 'common_db',
+        'auth':                  'common_db', 
+        'admin':                 'common_db',
+        'sessions':              'common_db',
+        'contenttypes':          'common_db',
+        # ATS Apps
+        'ats_roles':             'roles_db',
+        'ats':                   'default',
+        'audit':                 'audit_db',
     }
 
     def db_for_read(self, model, **hints):
