@@ -1,6 +1,10 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from .views import RegisterView, RegisterSuperuserView, UserProfileView, LogoutView, CheckSetupView, CustomTokenObtainPairView
+from .views import (
+    RegisterView, RegisterSuperuserView, UserProfileView, LogoutView, 
+    CheckSetupView, CustomTokenObtainPairView, TokenRefreshCookieView,
+    UserSessionsView, RevokeSessionView, LogoutAllDevicesView
+)
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
@@ -29,8 +33,14 @@ urlpatterns = [
     path('login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('logout/', LogoutView.as_view(), name='auth_logout'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('token/refresh/cookie/', TokenRefreshCookieView.as_view(), name='token_refresh_cookie'),
     
     # User endpoints
     path('me/', UserProfileView.as_view(), name='user_profile'),
     path('check-setup/', CheckSetupView.as_view(), name='check_setup'),
+    
+    # Sessions endpoints
+    path('sessions/', UserSessionsView.as_view(), name='user_sessions'),
+    path('sessions/<int:session_id>/', RevokeSessionView.as_view(), name='revoke_session'),
+    path('logout-all/', LogoutAllDevicesView.as_view(), name='logout_all_devices'),
 ]

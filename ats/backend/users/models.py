@@ -13,7 +13,6 @@ class SupabaseUserManager(BaseUserManager):
         return user
 
     def create_superuser(self, email, password=None, **extra_fields):
-        # Eliminamos is_staff e is_active de extra_fields ya que ahora son propiedades
         extra_fields.pop('is_staff', None)
         extra_fields.pop('is_active', None)
         extra_fields.setdefault('is_superuser', True)
@@ -23,16 +22,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True, max_length=255)
     
-    # Mapeos especiales para Supabase
     password = models.CharField(max_length=255, db_column='encrypted_password')
     last_login = models.DateTimeField(null=True, blank=True, db_column='last_sign_in_at')
     is_superuser = models.BooleanField(default=False, db_column='is_super_admin')
     
-    # Metadata estilo Supabase
     raw_app_meta_data = models.JSONField(default=dict, blank=True)
     raw_user_meta_data = models.JSONField(default=dict, blank=True)
     
-    # AuditorÃ­a (compatibles con Supabase)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -41,16 +37,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
 
-    # --- Atributos Virtuales (No se guardan en la DB) ---
     @property
     def is_staff(self):
-        # En Supabase, si eres super_admin, eres staff para Django
         return self.is_superuser
 
     @property
     def is_active(self):
-        # PodrÃ­amos vincularlo a 'email_confirmed_at', pero por ahora 
-        # devolvemos True para no bloquear el acceso.
         return True
 
     class Meta:
@@ -60,3 +52,73 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+
+class UserSession(models.Model):
+    RISK_LEVELS = [
+        ('low', 'Bajo'),
+        ('medium', 'Medio'),
+        ('high', 'Alto'),
+        ('critical', 'Crítico'),
+    ]
+    
+    user = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='sessions'
+    )
+    refresh_token_jti = models.CharField(max_length=255, unique=True)
+    device_info = models.JSONField(default=dict, blank=True)
+    ip_address = models.GenericIPAddressField()
+    country = models.CharField(max_length=2, blank=True, default='')
+    city = models.CharField(max_length=100, blank=True, default='')
+    user_agent = models.TextField(blank=True, default='')
+    is_current = models.BooleanField(default=False)
+    is_suspicious = models.BooleanField(default=False)
+    last_used = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        db_table = 'user_sessions'
+        indexes = [
+            models.Index(fields=['user', 'is_active']),
+            models.Index(fields=['user', '-created_at']),
+        ]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.email} - {self.ip_address}"
+
+
+class UserLoginActivity(models.Model):
+    RISK_LEVELS = [
+        ('low', 'Bajo'),
+        ('medium', 'Medio'),
+        ('high', 'Alto'),
+        ('critical', 'Crítico'),
+    ]
+    
+    user = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='login_history'
+    )
+    ip_address = models.GenericIPAddressField()
+    country = models.CharField(max_length=2, blank=True, default='')
+    city = models.CharField(max_length=100, blank=True, default='')
+    user_agent = models.TextField(blank=True, default='')
+    device_info = models.JSONField(default=dict, blank=True)
+    success = models.BooleanField()
+    risk_level = models.CharField(max_length=20, choices=RISK_LEVELS, default='low')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'user_login_activity'
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+        ]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.email} - {self.risk_level}"

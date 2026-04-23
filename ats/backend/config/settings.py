@@ -58,6 +58,10 @@ INSTALLED_APPS = [
     # Celery
     'django_celery_beat',
     'django_celery_results',
+    # ATS Apps
+    'ats_roles',
+    'ats',
+    'audit',
 ]
 
 MIDDLEWARE = [
@@ -131,25 +135,36 @@ if IS_TESTING:
             cursor.execute("CREATE SCHEMA IF NOT EXISTS auth;")
             cursor.execute("CREATE SCHEMA IF NOT EXISTS celery;")
             cursor.execute("CREATE SCHEMA IF NOT EXISTS jwt;")
+            cursor.execute("CREATE SCHEMA IF NOT EXISTS ats_roles;")
+            cursor.execute("CREATE SCHEMA IF NOT EXISTS ats;")
+            cursor.execute("CREATE SCHEMA IF NOT EXISTS audit;")
     pre_migrate.connect(create_test_schemas)
 else:
-    # ConfiguraciÃ³n normal multi-esquema
+    # Configuración normal multi-esquema
     DATABASES = {
         'default': {
             **_db_base,
-            'OPTIONS': { **_db_options, 'options': '-c search_path=django' },
+            'OPTIONS': { **_db_options, 'options': '-c search_path=ats,auth,django,public' },
+        },
+        'common_db': {
+            **_db_base,
+            'OPTIONS': { **_db_options, 'options': '-c search_path=django,auth,public' },
+        },
+        'roles_db': {
+            **_db_base,
+            'OPTIONS': { **_db_options, 'options': '-c search_path=ats_roles,auth,django,public' },
         },
         'celery_db': {
             **_db_base,
-            'OPTIONS': { **_db_options, 'options': '-c search_path=celery' },
+            'OPTIONS': { **_db_options, 'options': '-c search_path=celery,auth,django,public' },
         },
         'jwt_db': {
             **_db_base,
-            'OPTIONS': { **_db_options, 'options': '-c search_path=jwt' },
+            'OPTIONS': { **_db_options, 'options': '-c search_path=jwt,auth,django,public' },
         },
-        'auth_db': {
+        'audit_db': {
             **_db_base,
-            'OPTIONS': { **_db_options, 'options': '-c search_path=auth' },
+            'OPTIONS': { **_db_options, 'options': '-c search_path=audit,auth,django,public' },
         }
     }
     DATABASE_ROUTERS = ['config.routers.SchemaRouter']
@@ -178,6 +193,14 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'AUTH_HEADER_TYPES': ('Bearer',),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    # Cookies seguras
+    'AUTH_COOKIE': 'refresh_token',
+    'AUTH_COOKIE_SECURE': not DEBUG,
+    'AUTH_COOKIE_HTTP_ONLY': True,
+    'AUTH_COOKIE_SAMESITE': 'Lax',
+    'AUTH_COOKIE_DOMAIN': None,
 }
 
 # Password validation
@@ -262,4 +285,15 @@ CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 # django-celery-results: guarda resultados en la DB
 CELERY_RESULT_EXTENDED = True
+
+CELERY_BEAT_SCHEDULE = {
+    'cleanup-expired-tokens': {
+        'task': 'cleanup_expired_tokens',
+        'schedule': 86400.0,
+    },
+    'cleanup-inactive-sessions': {
+        'task': 'cleanup_inactive_sessions',
+        'schedule': 86400.0,
+    },
+}
 

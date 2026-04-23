@@ -7,6 +7,8 @@ const LoginForm = () => {
     setEmail,
     password,
     setPassword,
+    rememberMe,
+    setRememberMe,
     loading,
     handleLogin
   } = useLogin();
@@ -34,6 +36,18 @@ const LoginForm = () => {
           className="form-input"
           placeholder="••••••••"
         />
+      </div>
+      <div className="form-checkbox">
+        <input
+          type="checkbox"
+          id="rememberMe"
+          checked={rememberMe}
+          onChange={(e) => setRememberMe(e.target.checked)}
+          className="form-checkbox-input"
+        />
+        <label htmlFor="rememberMe" className="form-checkbox-label">
+          Recordar mi usuario por 30 días
+        </label>
       </div>
       <button
         type="submit"
