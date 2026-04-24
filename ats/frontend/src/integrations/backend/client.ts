@@ -91,8 +91,10 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return api(originalRequest);
       }
-      
-      isRefreshing = false;
+    }
+    
+    // Mecanismo de respaldo: cualquier error 401 -> logout directo
+    if (error.response?.status === 401) {
       clearTokens();
       window.location.href = '/login';
       return Promise.reject(error);

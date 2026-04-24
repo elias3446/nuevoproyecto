@@ -151,8 +151,8 @@ services:
         echo 'Starting Development Server (runserver)...' &&
         python manage.py runserver 0.0.0.0:${APP_PORT};
       else
-        echo 'Starting Production Server (gunicorn)...' &&
-        gunicorn ${DJANGO_WSGI} --bind 0.0.0.0:${APP_PORT} --workers ${GUNICORN_WORKERS};
+        echo 'Starting Production Server (daphne)...' &&
+        daphne -b 0.0.0.0 -p ${APP_PORT} config.asgi:application;
       fi"
 
   # â”€â”€â”€ Celery Worker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

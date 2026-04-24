@@ -32,7 +32,7 @@ urlpatterns = [
     path('register-superuser/', RegisterSuperuserView.as_view(), name='auth_register_superuser'),
     path('login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('logout/', LogoutView.as_view(), name='auth_logout'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('token/refresh/', TokenRefreshCookieView.as_view(), name='token_refresh'),
     path('token/refresh/cookie/', TokenRefreshCookieView.as_view(), name='token_refresh_cookie'),
     
     # User endpoints

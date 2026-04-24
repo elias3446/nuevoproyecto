@@ -14,9 +14,17 @@ from .utils import (
     register_login_activity,
     create_user_session,
     invalidate_session,
+    update_session_jti,
     invalidate_all_user_sessions,
+    invalidate_all_user_tokens,
     get_active_sessions,
 )
+from .notifications import (
+    notify_session_revoked,
+    notify_session_revoked_to_user,
+    notify_all_user_sessions_revoked,
+)
+from .tasks import revoke_session_token_task
 from django.contrib.auth import get_user_model
 import logging
 
@@ -117,15 +125,16 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             # Crear la sesión en DB
             if refresh_token_str:
                 try:
-                    refresh = RefreshToken(refresh_token_str)
-                    jti = refresh.get('jti')
-                    
                     ip = get_client_ip(request)
                     geo = get_geolocation(ip)
                     device_info = parse_user_agent(request)
                     is_suspicious = risk_level in ('high', 'critical')
                     
-                    create_user_session(
+                    # Usar el token original para obtener el JTI inicial
+                    temp_refresh = RefreshToken(refresh_token_str)
+                    jti = temp_refresh.get('jti')
+
+                    session = create_user_session(
                         user=user_obj,
                         refresh_token_jti=jti,
                         ip_address=ip,
@@ -134,8 +143,27 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                         city=geo.get('city', ''),
                         is_suspicious=is_suspicious,
                     )
+                    
+                    # IMPORTANTE: Inyectar el session_id en los tokens del response
+                    refresh = RefreshToken(refresh_token_str)
+                    refresh['session_id'] = session.id
+                    
+                    new_refresh_str = str(refresh)
+                    response.data['refresh'] = new_refresh_str
+                    response.data['access'] = str(refresh.access_token)
+                    
+                    # Actualizar la cookie con el token que ya tiene el session_id
+                    response.set_cookie(
+                        key=AUTH_COOKIE,
+                        value=new_refresh_str,
+                        max_age=REMEMBER_ME_LIFETIME.total_seconds(),
+                        httponly=True,
+                        samesite='Lax',
+                        secure=not settings.DEBUG,
+                        path='/',
+                    )
                 except Exception as e:
-                    logger.error(f"Error creating session: {e}")
+                    logger.error(f"Error creating session or injecting session_id: {e}")
         
         return super().finalize_response(request, response, *args, **kwargs)
 
@@ -190,20 +218,36 @@ class LogoutView(generics.GenericAPIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request):
+        print(f"DEBUG LOGOUT: Iniciando proceso para usuario {request.user.email}")
         refresh_token = request.data.get("refresh") or request.COOKIES.get(AUTH_COOKIE)
         
         if refresh_token:
             try:
                 token = RefreshToken(refresh_token)
                 jti = token.get('jti')
+                print(f"DEBUG LOGOUT: JTI recibido = {jti}")
                 token.blacklist()
-                invalidate_session(jti)
-            except Exception:
-                pass
+                
+                if not invalidate_session(jti):
+                    print(f"DEBUG LOGOUT: JTI {jti} no encontrado. Ejecutando fallback.")
+                    from .models import UserSession
+                    session = UserSession.objects.filter(user=request.user, is_active=True).order_by('-last_used').first()
+                    if session:
+                        session.is_active = False
+                        session.save()
+                        print(f"DEBUG LOGOUT: Sesión cerrada vía fallback.")
+                else:
+                    print(f"DEBUG LOGOUT: Sesión cerrada vía JTI.")
+            except Exception as e:
+                print(f"DEBUG LOGOUT: ERROR = {str(e)}")
+                invalidate_all_user_sessions(request.user)
+        else:
+            print("DEBUG LOGOUT: No se recibió refresh token en body ni cookies.")
+            # Si no hay token, pero el usuario quiere salir, cerramos todo lo que tenga activo
+            invalidate_all_user_sessions(request.user)
         
         response = Response({"success": "Logged out correctly"}, status=status.HTTP_205_RESET_CONTENT)
         response.delete_cookie(AUTH_COOKIE, path='/')
-        
         return response
 
 class TokenRefreshCookieView(TokenRefreshView):
@@ -217,6 +261,64 @@ class TokenRefreshCookieView(TokenRefreshView):
         
         request.data['refresh'] = refresh_token
         return super().post(request, *args, **kwargs)
+
+    def finalize_response(self, request, response, *args, **kwargs):
+        # Si el refresh fue exitoso y hubo rotación de token
+        if response.status_code == 200 and response.data.get('refresh'):
+            old_refresh = request.data.get('refresh')
+            new_refresh = response.data.get('refresh')
+            
+            # 1. Actualizar la Cookie con el nuevo token rotado
+            response.set_cookie(
+                key=AUTH_COOKIE,
+                value=new_refresh,
+                max_age=REMEMBER_ME_LIFETIME.total_seconds(),
+                httponly=True,
+                samesite='Lax',
+                secure=not settings.DEBUG,
+                path='/',
+            )
+            
+            # 2. Sincronizar nuestra tabla de sesiones con el nuevo JTI
+            if old_refresh and new_refresh:
+                try:
+                    refresh_obj = RefreshToken(old_refresh)
+                    session_id = refresh_obj.get('session_id')
+                    
+                    # Propagar el session_id al nuevo token
+                    new_refresh_obj = RefreshToken(new_refresh)
+                    if session_id:
+                        new_refresh_obj['session_id'] = session_id
+                        # Como hemos modificado el token, hay que regenerar el string y la cookie
+                        new_refresh_str = str(new_refresh_obj)
+                        response.data['refresh'] = new_refresh_str
+                        response.data['access'] = str(new_refresh_obj.access_token)
+                        
+                        response.set_cookie(
+                            key=AUTH_COOKIE,
+                            value=new_refresh_str,
+                            max_age=REMEMBER_ME_LIFETIME.total_seconds(),
+                            httponly=True,
+                            samesite='Lax',
+                            secure=not settings.DEBUG,
+                            path='/',
+                        )
+                    
+                    user_id = refresh_obj.get('user_id')
+                    User = get_user_model()
+                    user = User.objects.get(id=user_id)
+                    
+                    old_jti = refresh_obj.get('jti')
+                    new_jti = RefreshToken(new_refresh).get('jti')
+                    
+                    update_session_jti(user, old_jti, new_jti)
+                except Exception as e:
+                    logger.error(f"Error rotando JTI de sesión: {e}")
+            
+            # Opcional: eliminar el refresh del body si prefieres solo cookies
+            # del response.data['refresh']
+                    
+        return super().finalize_response(request, response, *args, **kwargs)
 
 class CheckSetupView(APIView):
     permission_classes = (permissions.AllowAny,)
@@ -235,7 +337,8 @@ class UserSessionsView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request):
-        sessions = get_active_sessions(request.user)
+        current_user_agent = request.META.get('HTTP_USER_AGENT', '')
+        sessions = get_active_sessions(request.user, current_user_agent)
         return Response({"sessions": sessions, "count": len(sessions)})
 
 
@@ -243,11 +346,22 @@ class RevokeSessionView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def delete(self, request, session_id):
+        from asgiref.sync import async_to_sync
         from .models import UserSession
         try:
             session = UserSession.objects.get(id=session_id, user=request.user, is_active=True)
-            session.is_active = False
-            session.save()
+            session_id_val = session.id
+            jti = session.refresh_token_jti
+            
+            # 1. Solicitar a Redis/Celery que elimine el token y marque la sesión en la DB
+            revoke_session_token_task.delay(session_id_val)
+            
+            # 2. Notificar específicamente a la sesión revocada para que cierre sesión
+            async_to_sync(notify_session_revoked)(session_id_val)
+            
+            # 3. Notificar al resto de dispositivos para que actualicen la lista
+            async_to_sync(notify_session_revoked_to_user)(str(request.user.id), session_id_val)
+            
             return Response({"success": "Sesión cerrada"})
         except UserSession.DoesNotExist:
             return Response({"error": "Sesión no encontrada"}, status=status.HTTP_404_NOT_FOUND)
@@ -257,7 +371,16 @@ class LogoutAllDevicesView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request):
-        count = invalidate_all_user_sessions(request.user)
+        from asgiref.sync import async_to_sync
+        from .models import UserSession
+        
+        # Obtener todas las sesiones activas del usuario
+        active_sessions = UserSession.objects.filter(user=request.user, is_active=True)
+        count = active_sessions.count()
+        
+        # 1. Solicitar a Redis/Celery la eliminación de cada sesión
+        for session in active_sessions:
+            revoke_session_token_task.delay(session.id)
         
         refresh_token = request.data.get("refresh") or request.COOKIES.get(AUTH_COOKIE)
         if refresh_token:
@@ -266,6 +389,9 @@ class LogoutAllDevicesView(APIView):
                 token.blacklist()
             except Exception:
                 pass
+        
+        # Notificar a todos los dispositivos via WebSocket
+        async_to_sync(notify_all_user_sessions_revoked)(str(request.user.id))
         
         response = Response({
             "success": "Todas las sesiones cerradas",

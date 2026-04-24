@@ -1,3 +1,5 @@
+import Security from "@/pages/Security";
+
 interface ContentPanelProps {
   activePage: string;
 }
@@ -24,14 +26,7 @@ export const ContentPanel = ({ activePage }: ContentPanelProps) => {
           </div>
         );
       case "settings":
-        return (
-          <div className="p-8">
-            <h1 className="text-3xl font-bold text-white mb-6">Ajustes del Sistema</h1>
-            <div className="bg-gray-800 border border-gray-700/50 p-6 rounded-xl shadow-lg">
-              <p className="text-gray-300">Configuraciones generales de la plataforma y preferencias.</p>
-            </div>
-          </div>
-        );
+        return <Security />;
       default:
         return null;
     }

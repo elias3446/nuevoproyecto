@@ -58,3 +58,39 @@ def cleanup_inactive_sessions():
     except Exception as e:
         logger.error(f"Error en cleanup_inactive_sessions: {str(e)}")
         return f"Error: {str(e)}"
+
+
+@shared_task(name='revoke_session_token_task')
+def revoke_session_token_task(session_id: int):
+    """
+    Tarea asíncrona para invalidar una sesión y poner su token en la Blacklist.
+    Redis actúa como broker para esta solicitud.
+    """
+    try:
+        from .models import UserSession
+        from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
+        
+        session = UserSession.objects.get(id=session_id)
+        jti = session.refresh_token_jti
+        
+        # 1. Marcar sesión como inactiva
+        session.is_active = False
+        session.save()
+        
+        # 2. Blacklist el token si existe en OutstandingTokens
+        if jti:
+            try:
+                token = OutstandingToken.objects.get(jti=jti)
+                BlacklistedToken.objects.get_or_create(token=token)
+                logger.info(f"Token {jti} añadido a la blacklist exitosamente")
+            except OutstandingToken.DoesNotExist:
+                logger.warning(f"No se encontró el token outstanding para JTI {jti}")
+        
+        return f"Sesión {session_id} revocada y token invalidado"
+        
+    except UserSession.DoesNotExist:
+        logger.error(f"Error: Sesión {session_id} no encontrada para revocar")
+        return "Sesión no encontrada"
+    except Exception as e:
+        logger.error(f"Error en revoke_session_token_task: {str(e)}")
+        return f"Error: {str(e)}"

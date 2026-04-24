@@ -65,7 +65,20 @@ def get_geolocation(ip: str) -> dict:
     if ip in ('127.0.0.1', 'localhost', '', '::1'):
         return {'country': 'EC', 'city': 'Local'}
     
+    # Detectar redes locales (Docker, redes privadas)
+    if ip.startswith(('172.', '192.168.', '10.', '172.16.', '172.17.', '172.18.', '172.19.', '172.20.', '172.21.', '172.22.', '172.23.', '172.24.', '172.25.', '172.26.', '172.27.', '172.28.', '172.29.', '172.30.', '172.31.')):
+        return {'country': 'XX', 'city': 'Local'}
+    
     return {'country': 'XX', 'city': 'Unknown'}
+
+
+def is_device_info_valid(device_info: dict) -> bool:
+    """Valida que device_info tenga datos confiables."""
+    if not device_info:
+        return False
+    browser = device_info.get('browser', '')
+    os = device_info.get('os', '')
+    return browser not in ('Unknown', '') and os not in ('Unknown', '')
 
 
 def calculate_risk_level(
@@ -201,6 +214,27 @@ def invalidate_session(jti: str) -> bool:
         return False
 
 
+def update_session_jti(user, old_jti: str, new_jti: str) -> bool:
+    """
+    Actualiza el JTI de una sesión activa del usuario.
+    Primero intenta buscar por old_jti, y si falla, busca la sesión activa más reciente.
+    """
+    try:
+        # Intento 1: Por el ID exacto que teníamos
+        session = UserSession.objects.get(refresh_token_jti=old_jti, user=user, is_active=True)
+        session.refresh_token_jti = new_jti
+        session.save()
+        return True
+    except UserSession.DoesNotExist:
+        # Intento 2: Buscar la sesión activa más reciente del usuario (fallback)
+        session = UserSession.objects.filter(user=user, is_active=True).order_by('-last_used').first()
+        if session:
+            session.refresh_token_jti = new_jti
+            session.save()
+            return True
+    return False
+
+
 def invalidate_all_user_sessions(user) -> int:
     """Invalida todas las sesiones de un usuario."""
     return UserSession.objects.filter(
@@ -209,9 +243,22 @@ def invalidate_all_user_sessions(user) -> int:
     ).update(is_active=False)
 
 
-def get_active_sessions(user) -> list:
-    """Retorna las sesiones activas del usuario."""
-    return list(
+def invalidate_all_user_tokens(user) -> int:
+    """Invalida todos los refresh tokens del usuario."""
+    return UserSession.objects.filter(
+        user=user, 
+        is_active=True
+    ).update(
+        is_active=False
+    )
+
+
+def get_active_sessions(user, current_user_agent: str = None) -> list:
+    """
+    Retorna las sesiones activas del usuario.
+    Si se proporciona current_user_agent, se usa para validar is_current.
+    """
+    sessions = list(
         UserSession.objects.filter(user=user, is_active=True)
         .values(
             'id',
@@ -226,3 +273,16 @@ def get_active_sessions(user) -> list:
             'created_at',
         )
     )
+    
+    # Si se proporciona user-agent actual, verificar重合
+    if current_user_agent:
+        for session in sessions:
+            # La sesión es actual si coincide con el user-agent
+            session_user_agent = session.get('user_agent', '')
+            session['is_current'] = (session_user_agent == current_user_agent)
+            # También marcar como sospechoso si los datos no son válidos
+            device_info = session.get('device_info', {})
+            if device_info and not is_device_info_valid(device_info):
+                session['is_suspicious'] = True
+    
+    return sessions
