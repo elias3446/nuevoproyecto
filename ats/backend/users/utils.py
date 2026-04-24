@@ -1,4 +1,6 @@
 import logging
+import urllib.request
+import json
 from typing import Optional
 from datetime import timedelta
 from django.utils import timezone
@@ -61,14 +63,23 @@ def parse_user_agent(request) -> dict:
 
 
 def get_geolocation(ip: str) -> dict:
-    """Retorna geolocalización básica. En producción usar API externa."""
-    if ip in ('127.0.0.1', 'localhost', '', '::1'):
+    """Retorna geolocalización real usando ip-api.com."""
+    if ip in ('127.0.0.1', 'localhost', '', '::1') or ip.startswith(('192.168.', '10.', '172.17.', '172.18.')):
         return {'country': 'EC', 'city': 'Local'}
     
-    # Detectar redes locales (Docker, redes privadas)
-    if ip.startswith(('172.', '192.168.', '10.', '172.16.', '172.17.', '172.18.', '172.19.', '172.20.', '172.21.', '172.22.', '172.23.', '172.24.', '172.25.', '172.26.', '172.27.', '172.28.', '172.29.', '172.30.', '172.31.')):
-        return {'country': 'XX', 'city': 'Local'}
-    
+    try:
+        # Usamos urllib para no añadir dependencias como 'requests'
+        url = f"http://ip-api.com/json/{ip}?fields=status,countryCode,city"
+        with urllib.request.urlopen(url, timeout=2) as response:
+            data = json.loads(response.read().decode())
+            if data.get('status') == 'success':
+                return {
+                    'country': data.get('countryCode', 'XX'),
+                    'city': data.get('city', 'Unknown')
+                }
+    except Exception as e:
+        logger.error(f"Error en geolocalización para IP {ip}: {e}")
+        
     return {'country': 'XX', 'city': 'Unknown'}
 
 
@@ -253,36 +264,9 @@ def invalidate_all_user_tokens(user) -> int:
     )
 
 
-def get_active_sessions(user, current_user_agent: str = None) -> list:
+def get_active_sessions(user):
     """
-    Retorna las sesiones activas del usuario.
-    Si se proporciona current_user_agent, se usa para validar is_current.
+    Retorna el QuerySet de sesiones activas del usuario.
     """
-    sessions = list(
-        UserSession.objects.filter(user=user, is_active=True)
-        .values(
-            'id',
-            'device_info',
-            'ip_address',
-            'country',
-            'city',
-            'user_agent',
-            'is_current',
-            'is_suspicious',
-            'last_used',
-            'created_at',
-        )
-    )
-    
-    # Si se proporciona user-agent actual, verificar重合
-    if current_user_agent:
-        for session in sessions:
-            # La sesión es actual si coincide con el user-agent
-            session_user_agent = session.get('user_agent', '')
-            session['is_current'] = (session_user_agent == current_user_agent)
-            # También marcar como sospechoso si los datos no son válidos
-            device_info = session.get('device_info', {})
-            if device_info and not is_device_info_valid(device_info):
-                session['is_suspicious'] = True
-    
-    return sessions
+    from .models import UserSession
+    return UserSession.objects.filter(user=user, is_active=True).order_by('-last_used')

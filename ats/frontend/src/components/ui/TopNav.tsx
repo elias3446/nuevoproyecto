@@ -103,85 +103,11 @@ export const TopNav = ({
         </button>
       </div>
 
-      {/* Dropdown menú móvil - aparece hacia abajo en móvil (< md = 768px) */}
-      {isMobileMenuOpen && (
-        <div className="absolute top-16 left-0 right-0 bg-gray-800/95 backdrop-blur-md border-b border-gray-700/50 p-4 md:hidden z-30 shadow-lg max-h-[calc(100vh-64px)] overflow-y-auto">
-          {/* Sección: Navegación */}
-          <div className="border-b border-gray-700/50 mb-2">
-            <button
-              onClick={() => toggleSection('navigation')}
-              className="w-full flex items-center justify-between px-4 py-3 text-gray-300 hover:bg-gray-700/50 rounded-xl transition-colors duration-200"
-            >
-              <div className="flex items-center">
-                <span className="font-semibold">Navegación</span>
-              </div>
-              {openSections.navigation ? (
-                <ChevronDown size={20} className="text-gray-400" />
-              ) : (
-                <ChevronRight size={20} className="text-gray-400" />
-              )}
-            </button>
-            {openSections.navigation && (
-              <div className="pb-2 pl-2">
-                <nav className="flex flex-col space-y-1">
-                  {navigation.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => handleNavClick(item.id)}
-                      onMouseDown={(e) => e.preventDefault()}
-                      className={`flex items-center px-4 py-3 rounded-xl text-left outline-none ${
-                        activePage === item.id 
-                          ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" 
-                          : "text-gray-400 hover:bg-gray-700/50 hover:text-gray-200"
-                      }`}
-                    >
-                      <span className="mr-3 flex-shrink-0">{navIcons[item.id] || item.icon}</span>
-                      <span className="font-medium">{item.label}</span>
-                    </button>
-                  ))}
-                </nav>
-              </div>
-            )}
-          </div>
+      {/* El menú desplegable absoluto ha sido eliminado en favor del Drawer del Sidebar para mayor consistencia */}
 
-          {/* Sección: Mi Cuenta */}
-          <div>
-            <button
-              onClick={() => toggleSection('account')}
-              className="w-full flex items-center justify-between px-4 py-3 text-gray-300 hover:bg-gray-700/50 rounded-xl transition-colors duration-200"
-            >
-              <div className="flex items-center">
-                <span className="font-semibold">Mi Cuenta</span>
-              </div>
-              {openSections.account ? (
-                <ChevronDown size={20} className="text-gray-400" />
-              ) : (
-                <ChevronRight size={20} className="text-gray-400" />
-              )}
-            </button>
-            {openSections.account && (
-              <div className="pb-2 pl-2">
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    toggleMobileMenu();
-                  }}
-                  className="flex items-center px-4 py-3 rounded-xl text-red-400/80 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 text-left w-full"
-                >
-                  <span className="mr-3 flex-shrink-0">
-                    <LogOut size={20} />
-                  </span>
-                  <span className="font-medium">Cerrar Sesión</span>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Drawer para tablet (aparece desde la izquierda) - visible en tablet (md a lg) */}
+      {/* Drawer para móvil y tablet (aparece desde la izquierda) - visible en pantallas < lg */}
       {isMobileMenuOpen && sidebar && (
-        <div className="hidden md:block lg:hidden fixed inset-0 z-40">
+        <div className="lg:hidden fixed inset-0 z-40">
           {/* Overlay */}
           <div 
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"

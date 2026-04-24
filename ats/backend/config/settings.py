@@ -33,9 +33,13 @@ else:
         elif clean_host:
             ALLOWED_HOSTS.append(clean_host)
 
-    # Aseguramos que la IP del servidor estÃ© siempre presente si existe
+    # Aseguramos que la IP del servidor esté siempre presente si existe
     if _server_ip and _server_ip not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(_server_ip)
+
+# Trust Nginx proxy headers
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # Application definition

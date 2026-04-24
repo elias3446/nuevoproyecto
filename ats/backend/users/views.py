@@ -1,10 +1,15 @@
 from rest_framework import generics, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.conf import settings
-from .serializers import RegisterSerializer, UserSerializer, RegisterSuperuserSerializer
+from .serializers import (
+    RegisterSerializer, 
+    UserSerializer, 
+    RegisterSuperuserSerializer,
+    UserSessionSerializer
+)
 from .custom_jwt import CustomTokenObtainPairSerializer, REMEMBER_ME_LIFETIME
 from .utils import (
     get_client_ip,
@@ -333,13 +338,39 @@ class CheckSetupView(APIView):
             return Response({"setup_needed": True, "error_info": str(e)}, status=status.HTTP_200_OK)
 
 
-class UserSessionsView(APIView):
+class UserSessionsView(generics.ListAPIView):
+    serializer_class = UserSessionSerializer
     permission_classes = (permissions.IsAuthenticated,)
 
-    def get(self, request):
-        current_user_agent = request.META.get('HTTP_USER_AGENT', '')
-        sessions = get_active_sessions(request.user, current_user_agent)
-        return Response({"sessions": sessions, "count": len(sessions)})
+    def get_queryset(self):
+        return get_active_sessions(self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        data = serializer.data
+        
+        # Identificar dinámicamente la sesión actual usando el session_id del token
+        auth_header = request.META.get('HTTP_AUTHORIZATION')
+        current_session_id = None
+        
+        if auth_header and auth_header.startswith('Bearer '):
+            try:
+                token_str = auth_header.split(' ')[1]
+                token = AccessToken(token_str)
+                current_session_id = token.get('session_id')
+            except Exception:
+                pass
+        
+        # Marcar la sesión actual en los datos devueltos
+        for session_data in data:
+            if current_session_id and session_data['id'] == current_session_id:
+                session_data['is_current'] = True
+            else:
+                # Asegurarse de que las demás no estén marcadas como current
+                session_data['is_current'] = False
+                
+        return Response({"sessions": data})
 
 
 class RevokeSessionView(APIView):

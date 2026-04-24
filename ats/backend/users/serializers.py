@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from .models import UserSession
 
 User = get_user_model()
 
@@ -8,6 +9,12 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ('id', 'email', 'created_at', 'raw_user_meta_data')
         read_only_fields = ('id', 'created_at')
+
+class UserSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserSession
+        fields = ('id', 'ip_address', 'device_info', 'country', 'city', 
+                  'last_used', 'is_current', 'is_active')
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
