@@ -64,10 +64,33 @@ Son de consumo automático por los contenedores, pero han sido expuestos a puert
 - **Caché/Broker (Redis 7)**: `localhost:6380`
 
 ### 📧 4. Correo y Webmail
-El sistema incluye un servidor de correo (Postfix/Dovecot) integrado con la base de datos de usuarios.
-- **Webmail (Roundcube)**: [https://localhost/webmail/](https://localhost/webmail/)
-- **SMTP (Envío)**: `localhost:25`
-- **IMAP (Recuperación)**: `localhost:143`
+El sistema incluye un servidor de correo local (Postfix/Dovecot) y una interfaz Webmail, pero está configurado por defecto para enviar notificaciones al exterior usando **Google (Gmail)** para garantizar la entrega y evitar bloqueos por spam.
+
+- **Webmail Local (Roundcube)**: [https://localhost/webmail/](https://localhost/webmail/) (Para visualizar correos internos).
+- **SMTP Interno (Envío)**: `localhost:25`
+- **IMAP Interno (Recuperación)**: `localhost:143`
+
+#### 🔗 Configuración de Envío al Exterior (Recomendado: Gmail)
+Para que la plataforma (ej. al registrar un usuario) envíe correos reales a cualquier dominio, debes configurar tus credenciales en el archivo `.env`:
+1. Activa la "Verificación en dos pasos" en tu cuenta de Google.
+2. Genera una **Contraseña de Aplicación** (16 letras) desde este enlace: [Generar App Password de Google](https://myaccount.google.com/apppasswords).
+3. Modifica tu archivo `.env` en la raíz de `ats/` con esos datos:
+   ```env
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_USE_TLS=True
+   SMTP_USER=tu_correo_real@gmail.com
+   SMTP_PASSWORD="tu_contraseña_de_aplicacion"
+   DEFAULT_FROM_EMAIL=tu_correo_real@gmail.com
+   ```
+4. Aplica los cambios reconstruyendo los contenedores encargados de enviar el correo: `docker-compose up -d backend celery-worker`.
+
+#### ⚠️ ¿Quieres usar tu propio servidor SMTP local para enviar a Internet?
+El servidor SMTP local incluido en este proyecto es ideal para **pruebas locales** o mensajería interna. Si deseas enviar correos al exterior *sin depender de Gmail u otro servicio externo (SendGrid, AWS)*, requerirás infraestructura profesional:
+- **Servidor VPS (Cloud)** con una IP Pública Estática y puerto 25 de salida desbloqueado.
+- Un **Dominio Real** (.com, .net, etc.).
+- Configurar registros DNS de seguridad obligatorios: **PTR (Reverse DNS)**, **SPF**, **DKIM** y **DMARC**. 
+Sin esto, Gmail, Outlook y otros proveedores rechazarán tus correos locales instantáneamente considerándolos Spam.
 
 ---
 

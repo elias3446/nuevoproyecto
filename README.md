@@ -45,6 +45,9 @@ docker-compose up -d --build db redis backend frontend-dev portal-frontend-dev s
 | **Portal Candidatos** | [https://localhost:444](https://localhost:444) | portaPublico | Producción |
 | **Portal Candidatos** | [http://localhost:8080](http://localhost:8080) | portaPublico | Desarrollo |
 
+> **Nota sobre el Servidor de Correo (SMTP / Webmail)**: El ecosistema levanta automáticamente un servidor de mensajería interna (Postfix/Roundcube). Sin embargo, para enviar **notificaciones al exterior** (como correos de registro a candidatos), se recomienda usar una cuenta real de Gmail configurada en `ats/.env`. [Revisa las instrucciones detalladas en ats/README.md](ats/README.md#4-correo-y-webmail) para saber cómo generar tu contraseña de aplicación o los requisitos para tener un SMTP propio público.
+
+
 ---
 
 ## 🔧 Comandos Útiles de Raíz
