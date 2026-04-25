@@ -33,7 +33,7 @@ $config['support_url'] = '';
 $config['des_key']     = 'random_string_replace_me';
 
 // Domain setting — helps logging in with just 'user' instead of 'user@domain.com'
-$config['username_domain'] = getenv('SMTP_DOMAIN') ?: 'localhost';
+$config['username_domain'] = getenv('LOCAL_MAIL_DOMAIN') ?: 'localhost';
 
 // Security and Proxy settings
 $config['use_https'] = true;
@@ -45,7 +45,7 @@ $config['plugins']     = array('archive', 'zipdownload');
 
 
 // Mail domain — comes from .env via Docker
-$config['mail_domain'] = getenv('SMTP_DOMAIN') ?: '';
+$config['mail_domain'] = getenv('LOCAL_MAIL_DOMAIN') ?: '';
 
 $config['smtp_log'] = true;
 $config['log_dir']  = '/var/www/html/webmail/logs/';

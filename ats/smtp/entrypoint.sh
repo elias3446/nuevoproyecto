@@ -67,16 +67,30 @@ chmod 600 /etc/dovecot/dovecot-sql.conf.ext
 chown root:postfix /etc/postfix/pgsql-mailboxes.cf
 chmod 640 /etc/postfix/pgsql-mailboxes.cf
 
+# Initialize Postfix queue directories (prevents 'hold' dir missing errors)
+mkdir -p /var/spool/postfix/hold
+mkdir -p /var/spool/postfix/defer
+mkdir -p /var/spool/postfix/deferred
+mkdir -p /var/spool/postfix/corrupt
+mkdir -p /var/spool/postfix/incoming
+mkdir -p /var/spool/postfix/active
+postfix set-permissions || true
+
+# Fix DNS for Postfix chroot
+mkdir -p /var/spool/postfix/etc
+cp /etc/resolv.conf /var/spool/postfix/etc/
+cp /etc/services /var/spool/postfix/etc/ || true
+
 # Configure Postfix
-if [ -n "$SMTP_DOMAIN" ]; then
-    postconf -e "myhostname = mail.$SMTP_DOMAIN"
-    postconf -e "mydomain = $SMTP_DOMAIN"
-    postconf -e "myorigin = $SMTP_DOMAIN"
+if [ -n "$LOCAL_MAIL_DOMAIN" ]; then
+    postconf -e "myhostname = mail.$LOCAL_MAIL_DOMAIN"
+    postconf -e "mydomain = $LOCAL_MAIL_DOMAIN"
+    postconf -e "myorigin = $LOCAL_MAIL_DOMAIN"
     # Do not accept local delivery for the domain, it's virtual
     postconf -e "mydestination = localhost"
     
     # Virtual Mailbox Configuration
-    postconf -e "virtual_mailbox_domains = $SMTP_DOMAIN"
+    postconf -e "virtual_mailbox_domains = $LOCAL_MAIL_DOMAIN"
     postconf -e "virtual_mailbox_base = /var/mail/virtual"
     postconf -e "virtual_mailbox_maps = proxy:pgsql:/etc/postfix/pgsql-mailboxes.cf"
     postconf -e "virtual_minimum_uid = 5000"
@@ -90,6 +104,22 @@ if [ -n "$SMTP_DOMAIN" ]; then
     postconf -e "mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128 172.16.0.0/12"
     postconf -e "maillog_file = /dev/stdout"
     postconf -e "smtpd_recipient_restrictions = permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination"
+    
+    # Relayhost Configuration
+    if [ "$POSTFIX_USE_RELAY" = "True" ]; then
+        echo "Configuring Postfix to use relayhost $SMTP_HOST:$SMTP_PORT"
+        postconf -e "relayhost = [$SMTP_HOST]:$SMTP_PORT"
+        postconf -e "smtp_sasl_auth_enable = yes"
+        postconf -e "smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd"
+        postconf -e "smtp_sasl_security_options = noanonymous"
+        postconf -e "smtp_tls_security_level = encrypt"
+        
+        # Create sasl_passwd
+        echo "[$SMTP_HOST]:$SMTP_PORT $SMTP_USER:$SMTP_PASSWORD" > /etc/postfix/sasl_passwd
+        postmap /etc/postfix/sasl_passwd
+        chown root:root /etc/postfix/sasl_passwd /etc/postfix/sasl_passwd.db
+        chmod 600 /etc/postfix/sasl_passwd /etc/postfix/sasl_passwd.db
+    fi
 fi
 
 # Create virtual mail user and group
