@@ -24,13 +24,13 @@ docker-compose up -d --build
 ### Opción B: Levantar SOLO PRODUCCIÓN 🚀
 Levanta los servicios optimizados, compilados y servidos por Nginx con HTTPS para ambos mundos.
 ```bash
-docker-compose up -d --build db redis backend nginx frontend portal-nginx portal-frontend
+docker-compose up -d --build db redis backend nginx frontend portal-nginx portal-frontend smtp
 ```
 
 ### Opción C: Levantar SOLO DESARROLLO 💻
 Levanta las bases de datos y los servidores con Hot-Reload (Vite en puerto 3000 y 8080).
 ```bash
-docker-compose up -d --build db redis backend frontend-dev portal-frontend-dev
+docker-compose up -d --build db redis backend frontend-dev portal-frontend-dev smtp
 ```
 
 ---
@@ -41,6 +41,7 @@ docker-compose up -d --build db redis backend frontend-dev portal-frontend-dev
 | :--- | :--- | :--- | :--- |
 | **ATS Admin/API** | [https://localhost](https://localhost) | ATS | Producción |
 | **ATS RRHH** | [http://localhost:3000](http://localhost:3000) | ATS | Desarrollo |
+| **Webmail (Roundcube)** | [https://localhost/webmail/](https://localhost/webmail/) | ATS | Producción |
 | **Portal Candidatos** | [https://localhost:444](https://localhost:444) | portaPublico | Producción |
 | **Portal Candidatos** | [http://localhost:8080](http://localhost:8080) | portaPublico | Desarrollo |
 

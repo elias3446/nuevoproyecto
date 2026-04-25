@@ -173,6 +173,10 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         return super().finalize_response(request, response, *args, **kwargs)
 
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+
+@method_decorator(csrf_exempt, name='dispatch')
 class RegisterView(generics.CreateAPIView):
     queryset = None
     permission_classes = (permissions.AllowAny,)
@@ -192,6 +196,7 @@ class RegisterView(generics.CreateAPIView):
             "refresh": str(refresh),
         }, status=status.HTTP_201_CREATED)
 
+@method_decorator(csrf_exempt, name='dispatch')
 class RegisterSuperuserView(generics.CreateAPIView):
     queryset = None
     permission_classes = (permissions.AllowAny,)
@@ -311,12 +316,16 @@ class TokenRefreshCookieView(TokenRefreshView):
                     
                     user_id = refresh_obj.get('user_id')
                     User = get_user_model()
-                    user = User.objects.get(id=user_id)
-                    
-                    old_jti = refresh_obj.get('jti')
-                    new_jti = RefreshToken(new_refresh).get('jti')
-                    
-                    update_session_jti(user, old_jti, new_jti)
+                    try:
+                        user = User.objects.get(id=user_id)
+                        
+                        old_jti = refresh_obj.get('jti')
+                        new_jti = RefreshToken(new_refresh).get('jti')
+                        
+                        update_session_jti(user, old_jti, new_jti)
+                    except User.DoesNotExist:
+                        logger.warning(f"User {user_id} not found during token rotation. Cleaning up.")
+                        response.delete_cookie(AUTH_COOKIE, path='/')
                 except Exception as e:
                     logger.error(f"Error rotando JTI de sesión: {e}")
             

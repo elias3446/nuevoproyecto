@@ -1,6 +1,6 @@
 import uuid
 from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 
 class SupabaseUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -18,7 +18,7 @@ class SupabaseUserManager(BaseUserManager):
         extra_fields.setdefault('is_superuser', True)
         return self.create_user(email, password, **extra_fields)
 
-class User(AbstractBaseUser, PermissionsMixin):
+class User(AbstractBaseUser):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True, max_length=255)
     
@@ -45,10 +45,19 @@ class User(AbstractBaseUser, PermissionsMixin):
     def is_active(self):
         return True
 
+    def has_perm(self, perm, obj=None):
+        """Superadmins tienen todos los permisos; el resto usa ats_roles."""
+        return self.is_superuser
+
+    def has_module_perms(self, app_label):
+        """Superadmins tienen acceso a todos los módulos."""
+        return self.is_superuser
+
     class Meta:
         db_table = '"auth"."users"'
         verbose_name = 'usuario'
         verbose_name_plural = 'usuarios'
+        managed = False
 
     def __str__(self):
         return self.email

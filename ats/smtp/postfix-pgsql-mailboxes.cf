@@ -1,0 +1,5 @@
+user = DBUSER
+password = DBPASS
+hosts = HOST
+dbname = DBNAME
+query = SELECT email FROM auth.users WHERE email='%s'

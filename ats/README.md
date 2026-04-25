@@ -29,13 +29,13 @@ Asegúrate de tener instalados los siguientes programas en tu entorno:
    **Opción B: Levantar SOLO en Modo Desarrollo (Recomendado para programar)**
    Levanta la base de datos, Redis, el Backend, Celery y el servidor de desarrollo de Vite (Frontend en el puerto 3000). Omite compilar Nginx y la versión estática de producción.
    ```bash
-   docker-compose up -d --build db redis backend frontend-dev celery-worker celery-beat
+   docker-compose up -d --build db redis backend frontend-dev celery-worker celery-beat smtp
    ```
 
    **Opción C: Levantar SOLO en Modo Producción (Recomendado para probar despliegue)**
    Levanta la base de datos, Redis, el Backend, Celery, compila el Frontend y levanta Nginx (HTTPS). Omite el servidor de desarrollo de Vite.
    ```bash
-   docker-compose up -d --build db redis backend frontend nginx celery-worker celery-beat
+   docker-compose up -d --build db redis backend frontend nginx celery-worker celery-beat smtp
    ```
 
 ---
@@ -62,6 +62,12 @@ Ideal para pruebas finales. Simula un despliegue en un servidor real expuesto a 
 Son de consumo automático por los contenedores, pero han sido expuestos a puertos específicos por si deseas conectarte a ellos usando un gestor externo (DBeaver, pgAdmin, Redis Insight, etc.):
 - **Base de Datos (PostgreSQL 17)**: `localhost:5433`
 - **Caché/Broker (Redis 7)**: `localhost:6380`
+
+### 📧 4. Correo y Webmail
+El sistema incluye un servidor de correo (Postfix/Dovecot) integrado con la base de datos de usuarios.
+- **Webmail (Roundcube)**: [https://localhost/webmail/](https://localhost/webmail/)
+- **SMTP (Envío)**: `localhost:25`
+- **IMAP (Recuperación)**: `localhost:143`
 
 ---
 

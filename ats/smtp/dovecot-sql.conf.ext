@@ -1,0 +1,13 @@
+driver = pgsql
+connect = host=HOST port=PORT dbname=DBNAME user=DBUSER password=DBPASS
+default_pass_scheme = BLF-CRYPT
+password_query = SELECT email AS user, \
+  CASE \
+    WHEN encrypted_password LIKE 'bcrypt_sha256$%%' \
+    THEN '{BLF-CRYPT}' || REPLACE(encrypted_password, 'bcrypt_sha256$', '') \
+    WHEN encrypted_password LIKE 'bcrypt$%%' \
+    THEN '{BLF-CRYPT}' || REPLACE(encrypted_password, 'bcrypt$', '') \
+    ELSE encrypted_password \
+  END AS password \
+  FROM auth.users WHERE email = '%u'
+user_query = SELECT email AS user, 5000 AS uid, 5000 AS gid, '/var/mail/virtual/%d/%n' AS home FROM auth.users WHERE email = '%u'
