@@ -15,16 +15,16 @@ password_query = SELECT email AS user, \\
     ELSE encrypted_password \\
   END AS password \\
   FROM auth.users WHERE email = '%u'
-user_query = SELECT email AS user, 5000 AS uid, 5000 AS gid, '/var/mail/virtual/%d/%n' AS home FROM auth.users WHERE email = '%u'
+user_query = SELECT email AS user, 5000 AS uid, 5000 AS gid, '/var/mail/virtual/%u' AS home FROM auth.users WHERE email = '%u'
 EOF
 
 # 2. Generate Postfix SQL config
 cat <<EOF > /etc/postfix/pgsql-mailboxes.cf
-hosts = $DB_HOST
+hosts = $DB_HOST:$DB_PORT
 dbname = $DB_NAME
 user = $DB_USER
 password = $DB_PASSWORD
-query = SELECT email FROM auth.users WHERE email='%s'
+query = SELECT email || '/Maildir/' FROM auth.users WHERE email='%s'
 EOF
 
 # Generate Nginx config from template
