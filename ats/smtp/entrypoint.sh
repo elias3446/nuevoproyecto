@@ -119,6 +119,11 @@ if [ -n "$LOCAL_MAIL_DOMAIN" ]; then
         postmap /etc/postfix/sasl_passwd
         chown root:root /etc/postfix/sasl_passwd /etc/postfix/sasl_passwd.db
         chmod 600 /etc/postfix/sasl_passwd /etc/postfix/sasl_passwd.db
+
+        # Force all outgoing mail to appear as SMTP_USER (required by Gmail relay)
+        echo "/^.*$/ $SMTP_USER" > /etc/postfix/sender_canonical
+        postmap /etc/postfix/sender_canonical
+        postconf -e "sender_canonical_maps = regexp:/etc/postfix/sender_canonical"
     fi
 fi
 
