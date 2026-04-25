@@ -187,6 +187,10 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         
+        # Enviar correo de bienvenida (Celery)
+        from .tasks import send_welcome_email_task
+        send_welcome_email_task.delay(user.email)
+        
         # Generar tokens automáticamente al registrarse
         refresh = RefreshToken.for_user(user)
         
@@ -207,6 +211,10 @@ class RegisterSuperuserView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        
+        # Enviar correo de bienvenida (Celery)
+        from .tasks import send_welcome_email_task
+        send_welcome_email_task.delay(user.email)
         
         refresh = RefreshToken.for_user(user)
         

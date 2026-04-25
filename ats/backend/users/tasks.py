@@ -94,3 +94,29 @@ def revoke_session_token_task(session_id: int):
     except Exception as e:
         logger.error(f"Error en revoke_session_token_task: {str(e)}")
         return f"Error: {str(e)}"
+
+
+@shared_task(name='send_welcome_email_task')
+def send_welcome_email_task(user_email: str, user_name: str = ''):
+    """
+    Envía un correo de bienvenida al usuario recién creado.
+    """
+    try:
+        from django.core.mail import send_mail
+        from django.conf import settings
+        
+        subject = 'Bienvenido a la plataforma ATS'
+        message = f'Hola {user_name or user_email},\n\nTu cuenta ha sido creada exitosamente.\nYa puedes acceder a la plataforma con tu correo electrónico: {user_email}\n\nSaludos,\nEl equipo de ATS.'
+        
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [user_email],
+            fail_silently=False,
+        )
+        logger.info(f"Correo de bienvenida enviado a {user_email}")
+        return f"Correo enviado a {user_email}"
+    except Exception as e:
+        logger.error(f"Error enviando correo de bienvenida a {user_email}: {str(e)}")
+        return f"Error: {str(e)}"

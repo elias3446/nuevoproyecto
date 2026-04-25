@@ -87,6 +87,8 @@ if [ -n "$SMTP_DOMAIN" ]; then
     postconf -e "smtpd_sasl_type = dovecot"
     postconf -e "smtpd_sasl_path = private/auth"
     postconf -e "smtpd_sasl_auth_enable = yes"
+    postconf -e "mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128 172.16.0.0/12"
+    postconf -e "maillog_file = /dev/stdout"
     postconf -e "smtpd_recipient_restrictions = permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination"
 fi
 
