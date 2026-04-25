@@ -124,6 +124,11 @@ if [ -n "$LOCAL_MAIL_DOMAIN" ]; then
         echo "/^.*$/ $SMTP_USER" > /etc/postfix/sender_canonical
         postmap /etc/postfix/sender_canonical
         postconf -e "sender_canonical_maps = regexp:/etc/postfix/sender_canonical"
+
+        # Rewrite From: header to include display name
+        DISPLAY_NAME="${SMTP_DISPLAY_NAME:-Sistema ATS}"
+        echo "/^From:.*/ REPLACE From: $DISPLAY_NAME <$SMTP_USER>" > /etc/postfix/smtp_header_checks
+        postconf -e "smtp_header_checks = regexp:/etc/postfix/smtp_header_checks"
     fi
 fi
 
