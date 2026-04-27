@@ -1,4 +1,4 @@
-﻿"""
+"""
 ASGI config for config project.
 Supports HTTP and WebSocket via Django Channels + Redis.
 """
@@ -10,15 +10,17 @@ from channels.auth import AuthMiddlewareStack
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
-# Import your WebSocket URL patterns here when ready:
-# from apps.myapp.routing import websocket_urlpatterns
+# Import your WebSocket URL patterns here:
+from users.routing import websocket_urlpatterns
+from users.channels_middleware import JWTAuthMiddleware
 
 application = ProtocolTypeRouter({
     'http': get_asgi_application(),
-    'websocket': AuthMiddlewareStack(
-        URLRouter(
-            []   # â† agrega aquÃ­ tus websocket_urlpatterns
+    'websocket': JWTAuthMiddleware(
+        AuthMiddlewareStack(
+            URLRouter(
+                websocket_urlpatterns
+            )
         )
     ),
 })
-

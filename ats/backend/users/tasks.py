@@ -58,3 +58,93 @@ def cleanup_inactive_sessions():
     except Exception as e:
         logger.error(f"Error en cleanup_inactive_sessions: {str(e)}")
         return f"Error: {str(e)}"
+
+
+@shared_task(name='revoke_session_token_task')
+def revoke_session_token_task(session_id: int):
+    """
+    Tarea asíncrona para invalidar una sesión y poner su token en la Blacklist.
+    Redis actúa como broker para esta solicitud.
+    """
+    try:
+        from .models import UserSession
+        from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
+        
+        session = UserSession.objects.get(id=session_id)
+        jti = session.refresh_token_jti
+        
+        # 1. Marcar sesión como inactiva
+        session.is_active = False
+        session.save()
+        
+        # 2. Blacklist el token si existe en OutstandingTokens
+        if jti:
+            try:
+                token = OutstandingToken.objects.get(jti=jti)
+                BlacklistedToken.objects.get_or_create(token=token)
+                logger.info(f"Token {jti} añadido a la blacklist exitosamente")
+            except OutstandingToken.DoesNotExist:
+                logger.warning(f"No se encontró el token outstanding para JTI {jti}")
+        
+        return f"Sesión {session_id} revocada y token invalidado"
+        
+    except UserSession.DoesNotExist:
+        logger.error(f"Error: Sesión {session_id} no encontrada para revocar")
+        return "Sesión no encontrada"
+    except Exception as e:
+        logger.error(f"Error en revoke_session_token_task: {str(e)}")
+        return f"Error: {str(e)}"
+
+
+@shared_task(name='send_welcome_email_task')
+def send_welcome_email_task(user_email: str, user_name: str = ''):
+    """
+    Envía un correo de bienvenida al usuario recién creado.
+    """
+    try:
+        from django.core.mail import send_mail
+        from django.conf import settings
+        
+        subject = 'Bienvenido a la plataforma ATS'
+        message = f'Hola {user_name or user_email},\n\nTu cuenta ha sido creada exitosamente.\nYa puedes acceder a la plataforma con tu correo electrónico: {user_email}\n\nSaludos,\nEl equipo de ATS.'
+        
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [user_email],
+            fail_silently=False,
+        )
+        logger.info(f"Correo de bienvenida enviado a {user_email}")
+        return f"Correo enviado a {user_email}"
+    except Exception as e:
+        logger.error(f"Error enviando correo de bienvenida a {user_email}: {str(e)}")
+        return f"Error: {str(e)}"
+
+
+@shared_task(name='cleanup_expired_password_reset_tokens')
+def cleanup_expired_password_reset_tokens():
+    """
+    Elimina tokens de recuperación de contraseña expirados o usados.
+    Se ejecuta diariamente via Celery Beat.
+    """
+    try:
+        from .models import PasswordResetToken
+        from django.utils import timezone
+
+        expired_count = PasswordResetToken.objects.filter(
+            expires_at__lt=timezone.now()
+        ).delete()[0]
+
+        used_count = PasswordResetToken.objects.filter(
+            used=True,
+            created_at__lt=timezone.now() - timedelta(days=7)
+        ).delete()[0]
+
+        total = expired_count + used_count
+        logger.info(f"Cleanup: eliminados {total} tokens de recuperación de contraseña")
+
+        return f"Eliminados {total} tokens de recuperación"
+    except Exception as e:
+        logger.error(f"Error en cleanup_expired_password_reset_tokens: {str(e)}")
+        return f"Error: {str(e)}"

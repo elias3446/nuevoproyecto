@@ -1,4 +1,6 @@
 import logging
+import urllib.request
+import json
 from typing import Optional
 from datetime import timedelta
 from django.utils import timezone
@@ -61,11 +63,33 @@ def parse_user_agent(request) -> dict:
 
 
 def get_geolocation(ip: str) -> dict:
-    """Retorna geolocalización básica. En producción usar API externa."""
-    if ip in ('127.0.0.1', 'localhost', '', '::1'):
+    """Retorna geolocalización real usando ip-api.com."""
+    if ip in ('127.0.0.1', 'localhost', '', '::1') or ip.startswith(('192.168.', '10.', '172.17.', '172.18.')):
         return {'country': 'EC', 'city': 'Local'}
     
+    try:
+        # Usamos urllib para no añadir dependencias como 'requests'
+        url = f"http://ip-api.com/json/{ip}?fields=status,countryCode,city"
+        with urllib.request.urlopen(url, timeout=2) as response:
+            data = json.loads(response.read().decode())
+            if data.get('status') == 'success':
+                return {
+                    'country': data.get('countryCode', 'XX'),
+                    'city': data.get('city', 'Unknown')
+                }
+    except Exception as e:
+        logger.error(f"Error en geolocalización para IP {ip}: {e}")
+        
     return {'country': 'XX', 'city': 'Unknown'}
+
+
+def is_device_info_valid(device_info: dict) -> bool:
+    """Valida que device_info tenga datos confiables."""
+    if not device_info:
+        return False
+    browser = device_info.get('browser', '')
+    os = device_info.get('os', '')
+    return browser not in ('Unknown', '') and os not in ('Unknown', '')
 
 
 def calculate_risk_level(
@@ -201,6 +225,27 @@ def invalidate_session(jti: str) -> bool:
         return False
 
 
+def update_session_jti(user, old_jti: str, new_jti: str) -> bool:
+    """
+    Actualiza el JTI de una sesión activa del usuario.
+    Primero intenta buscar por old_jti, y si falla, busca la sesión activa más reciente.
+    """
+    try:
+        # Intento 1: Por el ID exacto que teníamos
+        session = UserSession.objects.get(refresh_token_jti=old_jti, user=user, is_active=True)
+        session.refresh_token_jti = new_jti
+        session.save()
+        return True
+    except UserSession.DoesNotExist:
+        # Intento 2: Buscar la sesión activa más reciente del usuario (fallback)
+        session = UserSession.objects.filter(user=user, is_active=True).order_by('-last_used').first()
+        if session:
+            session.refresh_token_jti = new_jti
+            session.save()
+            return True
+    return False
+
+
 def invalidate_all_user_sessions(user) -> int:
     """Invalida todas las sesiones de un usuario."""
     return UserSession.objects.filter(
@@ -209,20 +254,19 @@ def invalidate_all_user_sessions(user) -> int:
     ).update(is_active=False)
 
 
-def get_active_sessions(user) -> list:
-    """Retorna las sesiones activas del usuario."""
-    return list(
-        UserSession.objects.filter(user=user, is_active=True)
-        .values(
-            'id',
-            'device_info',
-            'ip_address',
-            'country',
-            'city',
-            'user_agent',
-            'is_current',
-            'is_suspicious',
-            'last_used',
-            'created_at',
-        )
+def invalidate_all_user_tokens(user) -> int:
+    """Invalida todos los refresh tokens del usuario."""
+    return UserSession.objects.filter(
+        user=user, 
+        is_active=True
+    ).update(
+        is_active=False
     )
+
+
+def get_active_sessions(user):
+    """
+    Retorna el QuerySet de sesiones activas del usuario.
+    """
+    from .models import UserSession
+    return UserSession.objects.filter(user=user, is_active=True).order_by('-last_used')

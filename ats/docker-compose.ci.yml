@@ -184,6 +184,18 @@ services:
         condition: service_healthy
     command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
 
+  smtp:
+    build:
+      context: ./smtp
+      dockerfile: Dockerfile
+    container_name: ci_myapp_smtp
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${SMTP_PORT}:25"
+      - "${IMAP_PORT}:143"
+
 volumes:
   postgres_data_ci:
   redis_data_ci:

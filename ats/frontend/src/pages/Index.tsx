@@ -24,7 +24,7 @@ const Index = () => {
     { id: "cv-espontaneos", label: "CV Espontáneos", icon: <FileText size={20} /> },
     { id: "formularios", label: "Formularios", icon: <ClipboardList size={20} /> },
     { id: "analytics", label: "Analytics", icon: <BarChart3 size={20} /> },
-    { id: "settings", label: "Seguridad", icon: <Shield size={20} />, link: "/security" },
+    { id: "settings", label: "Seguridad", icon: <Shield size={20} /> },
   ];
 
   const topNavNavigation: NavItem[] = [];
@@ -37,7 +37,7 @@ const Index = () => {
   return (
     <div className="index-page">
       {/* Sidebar - visible solo en desktop (lg) */}
-      <div className="hidden lg:block h-screen">
+      <div className="sidebar-desktop">
         <Sidebar 
           isSidebarOpen={isSidebarOpen}
           toggleSidebar={toggleSidebar}

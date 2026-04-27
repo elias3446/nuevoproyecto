@@ -1,21 +1,37 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useCheckSetup } from "./hooks/auth/useCheckSetup.ts";
+import { sessionNotifier } from "./integrations/backend/socket";
 import Login from "./pages/Login.tsx";
 import SuperuserSetup from "./pages/SuperuserSetup.tsx";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Register from "./pages/Register.tsx";
 import Security from "./pages/Security.tsx";
+import PasswordResetRequest from "./pages/PasswordResetRequest.tsx";
+import PasswordResetConfirm from "./pages/PasswordResetConfirm.tsx";
 
 const queryClient = new QueryClient();
 
 const RootContainer = () => {
   const { setupNeeded, loading, error, checkSetup } = useCheckSetup();
   const isAuthenticated = !!localStorage.getItem("access_token");
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      sessionNotifier.connect();
+    } else {
+      sessionNotifier.disconnect();
+    }
+    
+    return () => {
+      sessionNotifier.disconnect();
+    };
+  }, [isAuthenticated]);
 
   if (loading) {
     return (
@@ -58,6 +74,8 @@ const RootContainer = () => {
         <Route path="/dashboard" element={<Index />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/password-reset" element={<PasswordResetRequest />} />
+        <Route path="/password-reset/confirm/:token" element={<PasswordResetConfirm />} />
         <Route path="/setup-admin" element={<SuperuserSetup />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

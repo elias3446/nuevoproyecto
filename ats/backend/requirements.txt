@@ -1,15 +1,18 @@
-﻿django>=6.0
+django>=6.0
 djangorestframework
 djangorestframework-simplejwt
 django-cors-headers
 python-dotenv
 psycopg2-binary
+bcrypt
 gunicorn
 
 # Redis
 redis
 django-redis
 channels
+daphne
+uvicorn
 channels-redis
 
 # Celery
