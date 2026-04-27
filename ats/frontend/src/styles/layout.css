@@ -159,4 +159,21 @@
   .session-unknown {
     @apply text-gray-500 italic;
   }
+
+  .security-tabs {
+    @apply flex gap-4 mb-6 border-b border-gray-700;
+  }
+
+  .security-tab {
+    @apply px-4 py-2 text-gray-400 hover:text-white transition-colors 
+           border-b-2 border-transparent -mb-px;
+  }
+
+  .security-tab.active {
+    @apply text-blue-500 border-blue-500;
+  }
+
+  .password-change-container {
+    @apply bg-gray-800 rounded-xl p-6 border border-gray-700;
+  }
 }

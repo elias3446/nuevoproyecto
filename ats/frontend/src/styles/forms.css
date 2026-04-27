@@ -45,4 +45,89 @@
   .form-checkbox-label {
     @apply text-sm text-slate-300 cursor-pointer select-none;
   }
+
+  /* Password Reset Styles */
+  .password-reset-success,
+  .password-reset-loading,
+  .password-reset-error {
+    @apply text-center py-8;
+  }
+
+  .success-icon,
+  .error-icon {
+    @apply flex justify-center mb-4;
+  }
+
+  .success-title,
+  .error-title {
+    @apply text-2xl font-bold mb-2;
+  }
+
+  .success-title {
+    @apply text-green-500;
+  }
+
+  .error-title {
+    @apply text-red-500;
+  }
+
+  .success-message,
+  .error-message {
+    @apply text-slate-400 mb-4;
+  }
+
+  .success-note {
+    @apply text-sm text-slate-500;
+  }
+
+  .loading-text {
+    @apply text-slate-400 mt-4;
+  }
+
+  .reset-email-info {
+    @apply bg-slate-800/50 rounded-lg p-4 mb-6 text-center;
+  }
+
+  .reset-email-label {
+    @apply text-sm text-slate-400;
+  }
+
+  .reset-email-value {
+    @apply text-white font-semibold mt-1;
+  }
+
+  .form-error {
+    @apply text-red-500 text-sm mt-2;
+  }
+
+  /* Password Change Form */
+  .password-change-form {
+    @apply space-y-6;
+  }
+
+  .form-field {
+    @apply space-y-2;
+  }
+
+  .password-input-wrapper {
+    @apply relative;
+  }
+
+  .password-toggle {
+    @apply absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 
+           hover:text-white transition-colors;
+  }
+
+  .field-hint {
+    @apply text-xs text-slate-500;
+  }
+
+  .form-actions {
+    @apply mt-8;
+  }
+
+  .security-warning {
+    @apply text-sm text-amber-500/80 mt-4 p-3 bg-amber-500/10 
+           rounded-lg border border-amber-500/20;
+  }
 }

@@ -253,7 +253,7 @@ CORS_ALLOWED_ORIGINS = [
 # SimpleJWT settings (already configured above)
 
 
-# â”€â”€â”€ Redis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────────────────────────────────────────────────────────────
 _redis_url = os.environ.get('REDIS_URL', 'redis://redis:6379/0')
 
 # Cache backend
@@ -310,6 +310,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'cleanup_inactive_sessions',
         'schedule': 86400.0,
     },
+    'cleanup-expired-password-reset-tokens': {
+        'task': 'cleanup_expired_password_reset_tokens',
+        'schedule': 86400.0,
+    },
 }
 # ─── Email Settings ──────────────────────────────────────────────────────────
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -319,3 +323,12 @@ EMAIL_USE_TLS = os.environ.get('SMTP_USE_TLS', 'False') == 'True'
 EMAIL_HOST_USER = os.environ.get('SMTP_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', os.environ.get('SMTP_USER', 'noreply@localhost'))
+
+# Frontend URL for password reset links
+FRONTEND_URL = os.environ.get('FRONTEND_URL')
+if not FRONTEND_URL or "${FRONTEND_PORT}" in FRONTEND_URL:
+    _server_ip = os.environ.get('SERVER_IP', 'localhost')
+    if DEBUG:
+        FRONTEND_URL = f"http://{_server_ip}:3000"
+    else:
+        FRONTEND_URL = f"https://{_server_ip}"

@@ -120,3 +120,31 @@ def send_welcome_email_task(user_email: str, user_name: str = ''):
     except Exception as e:
         logger.error(f"Error enviando correo de bienvenida a {user_email}: {str(e)}")
         return f"Error: {str(e)}"
+
+
+@shared_task(name='cleanup_expired_password_reset_tokens')
+def cleanup_expired_password_reset_tokens():
+    """
+    Elimina tokens de recuperación de contraseña expirados o usados.
+    Se ejecuta diariamente via Celery Beat.
+    """
+    try:
+        from .models import PasswordResetToken
+        from django.utils import timezone
+
+        expired_count = PasswordResetToken.objects.filter(
+            expires_at__lt=timezone.now()
+        ).delete()[0]
+
+        used_count = PasswordResetToken.objects.filter(
+            used=True,
+            created_at__lt=timezone.now() - timedelta(days=7)
+        ).delete()[0]
+
+        total = expired_count + used_count
+        logger.info(f"Cleanup: eliminados {total} tokens de recuperación de contraseña")
+
+        return f"Eliminados {total} tokens de recuperación"
+    except Exception as e:
+        logger.error(f"Error en cleanup_expired_password_reset_tokens: {str(e)}")
+        return f"Error: {str(e)}"

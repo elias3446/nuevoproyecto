@@ -3,7 +3,9 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
     RegisterView, RegisterSuperuserView, UserProfileView, LogoutView, 
     CheckSetupView, CustomTokenObtainPairView, TokenRefreshCookieView,
-    UserSessionsView, RevokeSessionView, LogoutAllDevicesView
+    UserSessionsView, RevokeSessionView, LogoutAllDevicesView,
+    PasswordResetRequestView, PasswordResetValidateTokenView, 
+    PasswordResetConfirmView, PasswordChangeView
 )
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -43,4 +45,9 @@ urlpatterns = [
     path('sessions/', UserSessionsView.as_view(), name='user_sessions'),
     path('sessions/<int:session_id>/', RevokeSessionView.as_view(), name='revoke_session'),
     path('logout-all/', LogoutAllDevicesView.as_view(), name='logout_all_devices'),
+    
+    path('password/reset/', PasswordResetRequestView.as_view(), name='password_reset_request'),
+    path('password/reset/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('password/reset/<str:token>/', PasswordResetValidateTokenView.as_view(), name='password_reset_validate'),
+    path('password/change/', PasswordChangeView.as_view(), name='password_change'),
 ]

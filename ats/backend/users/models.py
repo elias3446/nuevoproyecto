@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
+from django.utils import timezone
 
 class SupabaseUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -131,3 +132,29 @@ class UserLoginActivity(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.risk_level}"
+
+
+class PasswordResetToken(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='password_reset_tokens'
+    )
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used = models.BooleanField(default=False)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'password_reset_tokens'
+        indexes = [
+            models.Index(fields=['user', 'used']),
+            models.Index(fields=['token']),
+        ]
+
+    def __str__(self):
+        return f"Password reset for {self.user.email}"
+
+    def is_valid(self):
+        return not self.used and self.expires_at > timezone.now()

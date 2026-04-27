@@ -24,13 +24,13 @@ docker-compose up -d --build
 ### Opción B: Levantar SOLO PRODUCCIÓN 🚀
 Levanta los servicios optimizados, compilados y servidos por Nginx con HTTPS para ambos mundos.
 ```bash
-docker-compose up -d --build db redis backend nginx frontend portal-nginx portal-frontend smtp
+docker-compose up -d --build db redis backend nginx frontend portal-nginx portal-frontend celery-worker celery-beat smtp
 ```
 
 ### Opción C: Levantar SOLO DESARROLLO 💻
 Levanta las bases de datos y los servidores con Hot-Reload (Vite en puerto 3000 y 8080).
 ```bash
-docker-compose up -d --build db redis backend frontend-dev portal-frontend-dev smtp
+docker-compose up -d --build db redis backend frontend-dev portal-frontend-dev celery-worker celery-beat smtp
 ```
 
 ---

@@ -20,6 +20,14 @@
     @apply mt-6 text-center;
   }
 
+  .auth-footer-links {
+    @apply mt-6 text-center flex items-center justify-center gap-2;
+  }
+
+  .auth-footer-divider {
+    @apply text-slate-500;
+  }
+
   .auth-footer-text {
     @apply text-slate-400 text-sm;
   }

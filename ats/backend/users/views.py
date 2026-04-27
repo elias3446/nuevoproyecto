@@ -31,6 +31,8 @@ from .notifications import (
 )
 from .tasks import revoke_session_token_task
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+import os
 import logging
 
 logger = logging.getLogger(__name__)
@@ -399,15 +401,18 @@ class RevokeSessionView(APIView):
         try:
             session = UserSession.objects.get(id=session_id, user=request.user, is_active=True)
             session_id_val = session.id
-            jti = session.refresh_token_jti
             
-            # 1. Solicitar a Redis/Celery que elimine el token y marque la sesión en la DB
+            # 1. Marcar como inactiva de forma SÍNCRONA para persistencia inmediata
+            session.is_active = False
+            session.save()
+            
+            # 2. Solicitar a Redis/Celery que invalide el token (Blacklist)
             revoke_session_token_task.delay(session_id_val)
             
-            # 2. Notificar específicamente a la sesión revocada para que cierre sesión
+            # 3. Notificar específicamente a la sesión revocada para que cierre sesión
             async_to_sync(notify_session_revoked)(session_id_val)
             
-            # 3. Notificar al resto de dispositivos para que actualicen la lista
+            # 4. Notificar al resto de dispositivos para que actualicen la lista
             async_to_sync(notify_session_revoked_to_user)(str(request.user.id), session_id_val)
             
             return Response({"success": "Sesión cerrada"})
@@ -426,7 +431,10 @@ class LogoutAllDevicesView(APIView):
         active_sessions = UserSession.objects.filter(user=request.user, is_active=True)
         count = active_sessions.count()
         
-        # 1. Solicitar a Redis/Celery la eliminación de cada sesión
+        # 1. Marcar todas las sesiones como inactivas de forma SÍNCRONA
+        active_sessions.update(is_active=False)
+        
+        # 2. Solicitar a Redis/Celery la invalidación de cada token (Blacklist)
         for session in active_sessions:
             revoke_session_token_task.delay(session.id)
         
@@ -447,4 +455,245 @@ class LogoutAllDevicesView(APIView):
         }, status=status.HTTP_200_OK)
         response.delete_cookie(AUTH_COOKIE, path='/')
         
+        return response
+
+
+class PasswordResetRequestView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request):
+        from django.core.mail import send_mail
+        from django.conf import settings
+        from django.template.loader import render_to_string
+        import secrets
+        from datetime import timedelta
+        from .models import PasswordResetToken
+
+        email = request.data.get('email')
+
+        if not email:
+            return Response(
+                {'error': 'El correo electrónico es requerido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        from django.utils import timezone
+        import os
+        User = get_user_model()
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response(
+                {'detail': 'Si el correo existe, recibirás un enlace de recuperación'},
+                status=status.HTTP_200_OK
+            )
+
+        token = secrets.token_urlsafe(32)
+        expires_at = timezone.now() + timedelta(minutes=15)
+
+        ip_address = get_client_ip(request)
+
+        reset_token = PasswordResetToken.objects.create(
+            user=user,
+            token=token,
+            expires_at=expires_at,
+            ip_address=ip_address
+        )
+
+        reset_url = f"{settings.FRONTEND_URL}/password-reset/confirm/{token}"
+
+        try:
+            subject = 'Recuperación de Contraseña'
+            message = f'''
+Hola {user.email},
+
+Has solicitado recuperar tu contraseña. Haz clic en el siguiente enlace para crear una nueva contraseña:
+
+{reset_url}
+
+Este enlace expire en 15 minutos y solo puede usarse una vez.
+
+Si no solicitaste este cambio, puedes ignorar este correo.
+
+Saludos,
+El equipo de ATS.
+'''
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            logger.error(f"Error enviando correo de recuperación a {user.email}: {str(e)}")
+            return Response(
+                {'error': 'Error al enviar el correo. Intenta más tarde.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        return Response(
+            {'detail': 'Si el correo existe, recibirás un enlace de recuperación'},
+            status=status.HTTP_200_OK
+        )
+
+
+class PasswordResetValidateTokenView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, token):
+        from .models import PasswordResetToken
+
+        try:
+            reset_token = PasswordResetToken.objects.select_related('user').get(token=token)
+        except PasswordResetToken.DoesNotExist:
+            return Response(
+                {'valid': False, 'error': 'Token inválido'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if reset_token.used:
+            return Response(
+                {'valid': False, 'error': 'Este enlace ya ha sido utilizado'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        from django.utils import timezone
+        if reset_token.expires_at < timezone.now():
+            return Response(
+                {'valid': False, 'error': 'El enlace ha expirado'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response({
+            'valid': True,
+            'email': reset_token.user.email
+        })
+
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request):
+        from .models import PasswordResetToken
+
+        token = request.data.get('token')
+        new_password = request.data.get('new_password')
+        new_password_confirm = request.data.get('new_password_confirm')
+
+        if not token or not new_password:
+            return Response(
+                {'error': 'Token y nueva contraseña son requeridos'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if new_password != new_password_confirm:
+            return Response(
+                {'error': 'Las contraseñas no coinciden'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if len(new_password) < 8:
+            return Response(
+                {'error': 'La contraseña debe tener al menos 8 caracteres'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            reset_token = PasswordResetToken.objects.select_related('user').get(token=token)
+        except PasswordResetToken.DoesNotExist:
+            return Response(
+                {'error': 'Token inválido'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if reset_token.used:
+            return Response(
+                {'error': 'Este enlace ya ha sido utilizado'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        from django.utils import timezone
+        if reset_token.expires_at < timezone.now():
+            return Response(
+                {'error': 'El enlace ha expirado'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = reset_token.user
+        user.set_password(new_password)
+        user.save()
+
+        reset_token.used = True
+        reset_token.save()
+
+        from .utils import invalidate_all_user_sessions
+        invalidate_all_user_sessions(user)
+
+        return Response(
+            {'detail': 'Contraseña actualizada correctamente. Por favor, inicia sesión con tu nueva contraseña.'},
+            status=status.HTTP_200_OK
+        )
+
+
+class PasswordChangeView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError
+
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+        new_password_confirm = request.data.get('new_password_confirm')
+
+        if not all([current_password, new_password, new_password_confirm]):
+            return Response(
+                {'error': 'Todos los campos son requeridos'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = request.user
+
+        if not user.check_password(current_password):
+            return Response(
+                {'error': 'La contraseña actual es incorrecta'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if new_password != new_password_confirm:
+            return Response(
+                {'error': 'Las contraseñas nuevas no coinciden'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            validate_password(new_password, user)
+        except ValidationError as e:
+            return Response(
+                {'error': e.messages},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user.set_password(new_password)
+        user.save()
+
+        from .utils import invalidate_all_user_sessions
+        invalidate_all_user_sessions(user)
+
+        refresh_token = request.COOKIES.get(AUTH_COOKIE)
+        if refresh_token:
+            try:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            except Exception:
+                pass
+
+        response = Response(
+            {'detail': 'Contraseña actualizada correctamente'},
+            status=status.HTTP_200_OK
+        )
+        response.delete_cookie(AUTH_COOKIE, path='/')
+
         return response
