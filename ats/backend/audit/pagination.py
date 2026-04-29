@@ -9,95 +9,89 @@ class RedisCachedPageNumberPagination(PageNumberPagination):
     """
     Paginación con caché en Redis.
 
-    Almacena cada página bajo la clave:
-        {cache_prefix}:{user_id}:p{page}:s{page_size}
+    La estrategia de caché se aplica en la vista (override de list()),
+    NO en paginate_queryset, para no romper el flujo interno de DRF.
 
-    TTL configurable por subclase (default 60 s).
-    Para invalidar todo el listado de un usuario:
-        RedisCachedPageNumberPagination.invalidate(cache_prefix, user_id)
+    Uso en la vista:
+        class MyView(generics.ListAPIView):
+            pagination_class = MyPagination
+
+            def list(self, request, *args, **kwargs):
+                return self.pagination_class.cached_list(self, request, *args, **kwargs)
+
+    Para invalidar la caché de un usuario:
+        MyPagination.invalidate('prefix', user_id)
     """
     page_size = 10
     page_size_query_param = "page_size"
     max_page_size = 100
-    cache_ttl = 60          # segundos
-    cache_prefix = "paginated"  # sobreescribir en subclases
+    cache_ttl = 60
+    cache_prefix = "paginated"
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 
-    def _cache_key(self, request) -> str:
-        user_id = str(request.user.id) if request.user.is_authenticated else "anon"
-        page    = self.get_page_number(request, self)
-        size    = self.get_page_size(request)
-        # Incluir filtros extra en la clave para evitar colisiones
-        params  = {k: v for k, v in request.query_params.items()
-                   if k not in ("page", "page_size")}
-        suffix  = hashlib.md5(json.dumps(params, sort_keys=True).encode()).hexdigest()[:8]
-        return f"{self.cache_prefix}:{user_id}:p{page}:s{size}:{suffix}"
+    @classmethod
+    def _make_key(cls, prefix: str, user_id: str, page, page_size, extra_params: dict = None) -> str:
+        suffix = ""
+        if extra_params:
+            suffix = ":" + hashlib.md5(
+                json.dumps(extra_params, sort_keys=True).encode()
+            ).hexdigest()[:8]
+        return f"{prefix}:{user_id}:p{page}:s{page_size}{suffix}"
 
     @classmethod
     def invalidate(cls, cache_prefix: str, user_id: str):
-        """
-        Elimina todas las entradas de caché para un usuario específico.
-        Utiliza el patrón de claves de Redis (requiere django-redis).
-        """
+        """Elimina todas las páginas cacheadas de un usuario."""
         try:
             from django_redis import get_redis_connection
             client = get_redis_connection("default")
-            # El prefijo de django_redis antepone 'django:' por defecto
             pattern = f"django:{cache_prefix}:{user_id}:*"
             keys = client.keys(pattern)
             if keys:
                 client.delete(*keys)
         except Exception:
-            pass  # Si Redis no está disponible, no rompemos el flujo
+            pass
 
-    # ── Override principal ────────────────────────────────────────────────────
+    @classmethod
+    def cached_list(cls, view, request, *args, **kwargs):
+        """
+        Helper para usar en views. Envuelve el flujo DRF estándar con caché Redis.
 
-    def paginate_queryset(self, queryset, request, view=None):
-        """Intenta servir desde caché; si falla, consulta la DB."""
-        self._cache_key_value = self._cache_key(request)
-        cached = cache.get(self._cache_key_value)
+        Ejemplo:
+            def list(self, request, *args, **kwargs):
+                return ExportsPagination.cached_list(self, request, *args, **kwargs)
+        """
+        user_id = str(request.user.id) if request.user.is_authenticated else "anon"
+        page       = request.query_params.get("page", 1)
+        page_size  = request.query_params.get("page_size", cls.page_size)
+        extra      = {k: v for k, v in request.query_params.items()
+                      if k not in ("page", "page_size")}
+        cache_key  = cls._make_key(cls.cache_prefix, user_id, page, page_size, extra)
+
+        cached = cache.get(cache_key)
         if cached is not None:
-            # Restaurar estado necesario para get_paginated_response
-            self.count   = cached["count"]
-            self.request = request
-            # Simular atributos de la página
-            self._cached_response = cached
-            self.page = type("FakePage", (), {
-                "paginator": type("FakePaginator", (), {"num_pages": cached["num_pages"]})(),
-                "number": cached["page_number"],
-                "has_next": lambda self: cached["has_next"],
-                "has_previous": lambda self: cached["has_previous"],
-            })()
-            return None  # Señal de que usamos caché
+            return Response(cached)
 
-        result = super().paginate_queryset(queryset, request, view)
-        return result
+        # Cold path: delegar al flujo DRF normal
+        from rest_framework.mixins import ListModelMixin
+        response = ListModelMixin.list(view, request, *args, **kwargs)
+
+        # Guardar solo respuestas 200 con datos paginados
+        if response.status_code == 200 and isinstance(response.data, dict) and "results" in response.data:
+            cache.set(cache_key, response.data, timeout=cls.cache_ttl)
+
+        return response
+
+    # ── get_paginated_response estándar ──────────────────────────────────────
 
     def get_paginated_response(self, data):
-        """Si hay caché, devuelve directo; si no, guarda y responde."""
-        if hasattr(self, "_cached_response"):
-            return Response(self._cached_response["payload"])
-
-        payload = {
-            "count":    self.page.paginator.count,
+        return Response({
+            "count":     self.page.paginator.count,
             "num_pages": self.page.paginator.num_pages,
-            "next":     self.get_next_link(),
-            "previous": self.get_previous_link(),
-            "results":  data,
-        }
-
-        # Guardar en caché
-        cache.set(self._cache_key_value, {
-            "count":       self.page.paginator.count,
-            "num_pages":   self.page.paginator.num_pages,
-            "page_number": self.page.number,
-            "has_next":    self.page.has_next(),
-            "has_previous": self.page.has_previous(),
-            "payload":     payload,
-        }, timeout=self.cache_ttl)
-
-        return Response(payload)
+            "next":      self.get_next_link(),
+            "previous":  self.get_previous_link(),
+            "results":   data,
+        })
 
     def get_paginated_response_schema(self, schema):
         return {
@@ -112,7 +106,7 @@ class RedisCachedPageNumberPagination(PageNumberPagination):
         }
 
 
-# ── Subclases reutilizables por entidad ──────────────────────────────────────
+# ── Subclases por entidad ─────────────────────────────────────────────────────
 
 class ExportsPagination(RedisCachedPageNumberPagination):
     page_size    = 10

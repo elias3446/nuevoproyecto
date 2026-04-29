@@ -108,8 +108,9 @@ export const ExportManager = () => {
   const { data, isLoading, page, setPage, totalPages, totalCount } =
     useServerTable<ExportRecord>("/audit/exports/list/", {
       pageSize: 10,
-      refetchInterval: (raw: any) => {
-        const results: ExportRecord[] = raw?.results ?? [];
+      // En React Query v5, refetchInterval recibe el objeto Query completo
+      refetchInterval: (query: any) => {
+        const results: ExportRecord[] = query?.state?.data?.results ?? [];
         const hasActive = results.some(
           (e) => e.status === "PENDING" || e.status === "PROCESSING"
         );

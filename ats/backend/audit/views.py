@@ -71,6 +71,9 @@ class ExportListView(generics.ListAPIView):
     def get_queryset(self):
         return Export.objects.filter(user=self.request.user).order_by('-created_at')
 
+    def list(self, request, *args, **kwargs):
+        return ExportsPagination.cached_list(self, request, *args, **kwargs)
+
 
 class ExportDetailView(generics.RetrieveAPIView):
     """
