@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Briefcase, Users, FileText, ClipboardList, BarChart3, Shield, UserCircle } from "lucide-react";
 import { TopNav } from "@/components/ui/TopNav";
 import { Sidebar, NavItem } from "@/components/ui/sidebar";
@@ -7,10 +8,14 @@ import { useLogout } from "@/hooks/auth/useLogout";
 import { useProfile } from "@/hooks/auth/useProfile";
 
 const Index = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activePage, setActivePage] = useState("dashboard");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user } = useProfile();
+
+  // Determinar activePage basándose en la URL (/dashboard/id o solo /dashboard)
+  const activePage = location.pathname.split("/")[2] || "dashboard";
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -27,13 +32,13 @@ const Index = () => {
     { id: "formularios", label: "Formularios", icon: <ClipboardList size={20} /> },
     { id: "analytics", label: "Analytics", icon: <BarChart3 size={20} /> },
     { id: "profile", label: "Perfil", icon: <UserCircle size={20} /> },
-    { id: "settings", label: "Seguridad", icon: <Shield size={20} /> },
+    { id: "security", label: "Seguridad", icon: <Shield size={20} /> },
   ];
 
   const topNavNavigation: NavItem[] = [];
 
   const handleNavigationClick = (id: string) => {
-    setActivePage(id);
+    navigate(`/dashboard/${id}`);
     setIsMobileMenuOpen(false);
   };
 
@@ -45,7 +50,7 @@ const Index = () => {
           isSidebarOpen={isSidebarOpen}
           toggleSidebar={toggleSidebar}
           activePage={activePage}
-          setActivePage={setActivePage}
+          setActivePage={(id) => handleNavigationClick(id)}
           navigation={sidebarNavigation}
           handleLogout={handleLogout}
           useFullHeight={true}

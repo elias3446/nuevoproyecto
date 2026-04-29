@@ -60,37 +60,37 @@ const RootContainer = () => {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/security" element={<Security />} />
-        <Route 
-          path="/" 
-          element={
-            setupNeeded 
-              ? <SuperuserSetup /> 
-              : (isAuthenticated ? <Index /> : <Login />)
-          } 
-        />
-        <Route path="/dashboard" element={<Index />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/password-reset" element={<PasswordResetRequest />} />
-        <Route path="/password-reset/confirm/:token" element={<PasswordResetConfirm />} />
-        <Route path="/setup-admin" element={<SuperuserSetup />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
+    <Routes>
+      <Route path="/security" element={<Security />} />
+      <Route 
+        path="/" 
+        element={
+          setupNeeded 
+            ? <SuperuserSetup /> 
+            : (isAuthenticated ? <Index /> : <Login />)
+        } 
+      />
+      <Route path="/dashboard/*" element={<Index />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/password-reset" element={<PasswordResetRequest />} />
+      <Route path="/password-reset/confirm/:token" element={<PasswordResetConfirm />} />
+      <Route path="/setup-admin" element={<SuperuserSetup />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <RootContainer />
-    </TooltipProvider>
-  </QueryClientProvider>
+  <BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <RootContainer />
+      </TooltipProvider>
+    </QueryClientProvider>
+  </BrowserRouter>
 );
 
 export default App;

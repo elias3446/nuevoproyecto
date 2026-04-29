@@ -12,12 +12,13 @@ export const ContentPanel = ({ activePage }: ContentPanelProps) => {
 
   const renderContent = () => {
     switch (activePage) {
+      case "dashboard":
       case "home":
         return (
           <div className="p-8">
-            <h1 className="text-3xl font-bold text-white mb-6">Bienvenido al Panel</h1>
+            <h1 className="text-3xl font-bold text-white mb-6">Panel de Control</h1>
             <div className="bg-gray-800 border border-gray-700/50 p-6 rounded-xl shadow-lg">
-              <p className="text-gray-300">Selecciona una opción del menú lateral para navegar sin recargar la página.</p>
+              <p className="text-gray-300">Bienvenido de nuevo. Selecciona una opción del menú lateral para gestionar el sistema.</p>
             </div>
           </div>
         );
@@ -37,9 +38,6 @@ export const ContentPanel = ({ activePage }: ContentPanelProps) => {
                       refetch();
                     }}
                   />
-                  <p className="text-sm text-gray-400 mt-3 text-center">
-                    JPG, PNG o GIF<br/>Máximo 5MB
-                  </p>
                 </div>
                 
                 {/* User Info Section */}
@@ -51,7 +49,6 @@ export const ContentPanel = ({ activePage }: ContentPanelProps) => {
                     </p>
                   </div>
                   
-                  {/* Aquí iría más información del perfil */}
                   <div className="pt-4 border-t border-gray-700/50">
                     <p className="text-gray-300">
                       Administra tu información personal y cuenta aquí.
@@ -62,10 +59,15 @@ export const ContentPanel = ({ activePage }: ContentPanelProps) => {
             </div>
           </div>
         );
+      case "security":
       case "settings":
         return <Security />;
       default:
-        return null;
+        return (
+          <div className="p-8 flex items-center justify-center h-full">
+            <p className="text-gray-500 italic">Módulo "{activePage}" en desarrollo...</p>
+          </div>
+        );
     }
   };
 

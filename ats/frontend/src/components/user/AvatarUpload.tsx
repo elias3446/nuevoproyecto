@@ -7,6 +7,9 @@ import { toast } from "sonner";
 import type { User } from "@/integrations/backend/types";
 import { api } from "@/integrations/backend/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
+import { ImageCaptureModal } from "@/components/ui/ImageCaptureModal";
+import { FilePreviewModal } from "@/components/ui/FilePreviewModal";
 
 interface AvatarUploadProps {
   currentAvatarUrl?: string;
@@ -21,35 +24,27 @@ export const AvatarUpload = ({
   user,
   onAvatarChange 
 }: AvatarUploadProps) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploading, uploadAvatar, removeAvatar } = useAvatarUpload();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const queryClient = useQueryClient();
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Mostrar preview local
+  const handleCapture = async (file: File) => {
+    // ... (lógica de captura se mantiene igual)
     const localPreview = URL.createObjectURL(file);
     setPreviewUrl(localPreview);
 
-    // Subir al servidor
     const resultUrl = await uploadAvatar(file);
     if (resultUrl) {
       if (onAvatarChange) onAvatarChange(resultUrl);
     } else {
       setPreviewUrl(null);
     }
-
-    // Limpiar input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
   };
 
-  const queryClient = useQueryClient();
-
   const handleRemove = async () => {
+    // ... (lógica de eliminación se mantiene igual)
     try {
       await api.patch('/me/', { avatar_url: null });
       removeAvatar();
@@ -67,7 +62,6 @@ export const AvatarUpload = ({
       });
       
       queryClient.invalidateQueries({ queryKey: ['profile'] });
-      
       toast.success("Avatar eliminado");
     } catch (error) {
       toast.error("Error al eliminar avatar");
@@ -77,55 +71,73 @@ export const AvatarUpload = ({
   const displayUrl = previewUrl || currentAvatarUrl || user?.raw_user_meta_data?.avatar_url;
 
   return (
-    <div className="avatar-upload-container">
-      <div className="relative inline-block">
-        <Avatar className="h-24 w-24 border-2 border-gray-600">
-          <AvatarImage src={displayUrl} alt="Avatar" />
-          <AvatarFallback className="text-2xl bg-gray-700 text-gray-300">
-            {userName.charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
+    <div className="flex flex-col items-center">
+      <div className="relative group">
+        {/* Avatar Interactivo (Clic para Previsualizar) */}
+        <div 
+          onClick={() => displayUrl && setIsPreviewModalOpen(true)}
+          className={cn(
+            "cursor-pointer transition-transform duration-300 active:scale-95",
+            displayUrl ? "hover:scale-[1.02]" : "cursor-default"
+          )}
+        >
+          <Avatar className="avatar-circle-lg">
+            <AvatarImage src={displayUrl} alt="Avatar" className="aspect-square object-cover rounded-full" />
+            <AvatarFallback className="avatar-fallback-custom">
+              {userName.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        </div>
         
         {/* Overlay de carga */}
         {uploading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
-            <Loader2 className="h-6 w-6 animate-spin text-white" />
+          <div className="avatar-loading-full">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
           </div>
         )}
         
         {/* Botón de cámara */}
         <button
           type="button"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsCaptureModalOpen(true);
+          }}
           disabled={uploading}
-          className="absolute bottom-0 right-0 p-1.5 bg-blue-600 hover:bg-blue-700 rounded-full text-white shadow-lg transition-colors"
+          className="avatar-badge"
           title="Cambiar avatar"
         >
-          <Camera size={14} />
+          <Camera size={18} />
         </button>
       </div>
 
-      {/* Input file oculto */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleFileSelect}
-        className="hidden"
+      <ImageCaptureModal 
+        isOpen={isCaptureModalOpen}
+        onClose={() => setIsCaptureModalOpen(false)}
+        onCapture={handleCapture}
+        title="Actualizar Foto de Perfil"
       />
 
-      {/* Botón eliminar */}
-      {displayUrl && (
-        <Button
+      <FilePreviewModal 
+        isOpen={isPreviewModalOpen}
+        onClose={() => setIsPreviewModalOpen(false)}
+        fileUrl={displayUrl}
+        fileName={`Avatar_${userName}`}
+      />
+
+      <p className="text-[11px] text-gray-500 mt-3 text-center leading-relaxed">
+        JPG, PNG o GIF<br/>Máximo 5MB
+      </p>
+
+      {displayUrl && !uploading && (
+        <button
           type="button"
-          variant="outline"
-          size="sm"
           onClick={handleRemove}
-          className="mt-3 text-red-400 border-red-400/30 hover:bg-red-400/10"
+          className="avatar-delete-btn"
         >
-          <X size={14} className="mr-1" />
-          Eliminar
-        </Button>
+          <X size={10} />
+          Eliminar imagen
+        </button>
       )}
     </div>
   );

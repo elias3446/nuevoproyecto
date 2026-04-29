@@ -1,5 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { api } from "@/integrations/backend/client";
 
 /**
@@ -26,6 +27,8 @@ export interface UseServerTableOptions {
   refetchInterval?: number | false | ((data: any) => number | false);
   /** Query params adicionales a enviar en cada request. */
   extraParams?: Record<string, string | number | boolean>;
+  /** Si se proporciona, sincroniza la página con este parámetro en la URL. */
+  urlParam?: string;
   /** Si es true, el hook no realiza ninguna petición. */
   enabled?: boolean;
 }
@@ -76,10 +79,35 @@ export function useServerTable<T>(
     refetchInterval,
     extraParams = {},
     enabled = true,
+    urlParam,
   } = options;
 
   const queryClient = useQueryClient();
-  const [page, setPageState] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Inicializar desde URL si existe
+  const initialPage = urlParam ? parseInt(searchParams.get(urlParam) || "1") : 1;
+  const [page, setPageState] = useState(initialPage);
+
+  // Sincronizar estado local -> URL
+  useEffect(() => {
+    if (urlParam && page !== parseInt(searchParams.get(urlParam) || "0")) {
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        if (page === 1) next.delete(urlParam);
+        else next.set(urlParam, String(page));
+        return next;
+      }, { replace: true });
+    }
+  }, [page, urlParam, setSearchParams]);
+
+  // Sincronizar URL -> estado local (para botones atrás/adelante del navegador)
+  useEffect(() => {
+    if (urlParam) {
+      const urlPage = parseInt(searchParams.get(urlParam) || "1");
+      if (urlPage !== page) setPageState(urlPage);
+    }
+  }, [searchParams, urlParam]);
 
   const queryKey = ["server-table", url, page, pageSize, extraParams];
 

@@ -195,7 +195,11 @@
   }
 
   .action-panel-select {
-    @apply bg-gray-900 border-gray-700 text-white;
+    @apply !bg-gray-900/80 !border-gray-700 !text-white backdrop-blur-sm;
+  }
+
+  .action-panel-select-content {
+    @apply !bg-gray-900 !border-gray-700 !text-white;
   }
 
   .action-panel-btn {
@@ -260,6 +264,15 @@
     @apply text-gray-400;
   }
 
+  /* ─── Paginación Dark Fix ────────────────────────────────────────────────── */
+  .pagination-link-active {
+    @apply !bg-blue-600/20 !text-blue-400 !border-blue-500/50;
+  }
+
+  .pagination-link-inactive {
+    @apply text-gray-400 hover:!bg-gray-800 hover:!text-white;
+  }
+
   /* ─── Download / Error actions ───────────────────────────────────────────── */
   .download-btn {
     @apply text-blue-400 hover:text-blue-300 hover:bg-blue-400/10;
@@ -267,5 +280,44 @@
 
   .error-label {
     @apply text-xs text-red-400 italic;
+  }
+
+  /* ─── Avatar & Perfil ────────────────────────────────────────────────────── */
+  .avatar-upload-wrapper {
+    @apply relative inline-block;
+  }
+
+  .avatar-circle-lg {
+    @apply !h-32 !w-32 border-2 border-gray-700 bg-gray-800 shadow-xl rounded-full transition-all duration-300 hover:border-blue-500/50;
+  }
+
+  .avatar-badge {
+    @apply absolute -bottom-1 -right-1 !h-9 !w-9 bg-blue-600 hover:bg-blue-500 rounded-full text-white shadow-lg 
+           flex items-center justify-center transition-all duration-200 transform hover:scale-110 active:scale-95 
+           border-[3px] border-gray-900 z-10;
+  }
+
+  .avatar-fallback-custom {
+    @apply text-4xl bg-gradient-to-br from-gray-700 to-gray-800 text-gray-300 font-semibold rounded-full;
+  }
+
+  .avatar-loading-full {
+    @apply absolute inset-0 flex items-center justify-center bg-gray-900/60 backdrop-blur-[2px] rounded-full z-[5];
+  }
+
+  .avatar-delete-btn {
+    @apply mt-2 text-[11px] text-gray-500 hover:text-red-400/80 transition-all duration-200 
+           flex items-center justify-center gap-1.5 mx-auto bg-transparent border-none 
+           cursor-pointer uppercase tracking-wider font-medium;
+  }
+
+  /* ─── Camera Utils ─────────────────────────────────────────────────────── */
+  .mirror {
+    transform: scaleX(-1);
+  }
+
+  /* Ocultar X por defecto de Shadcn */
+  .hide-close-button button[type="button"]:last-child {
+    @apply hidden !important;
   }
 }

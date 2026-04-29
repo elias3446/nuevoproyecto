@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useSessions } from "@/hooks/auth/useSessions";
 import { SessionsList } from "@/components/security/SessionsList";
 import { PasswordChangeForm } from "@/components/security/PasswordChangeForm";
@@ -7,7 +7,13 @@ import { ExportManager } from "@/components/security/ExportManager";
 const Security = () => {
   const { sessions, loading, revokeSession, revokeAllSessions, fetchSessions } =
     useSessions();
-  const [activeTab, setActiveTab] = useState<"sessions" | "password" | "exports">("sessions");
+  
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = (searchParams.get("tab") as "sessions" | "password" | "exports") || "sessions";
+
+  const setActiveTab = (tab: string) => {
+    setSearchParams({ tab });
+  };
 
   return (
     <div className="security-page">

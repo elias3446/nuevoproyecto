@@ -27,15 +27,13 @@ const STATUS_LABEL: Record<ExportRecord["status"], string> = {
 function StatusBadge({ status }: { status: ExportRecord["status"] }) {
   if (status === "COMPLETED")
     return <Badge className="badge-completed">{STATUS_LABEL[status]}</Badge>;
-  if (status === "PROCESSING")
+  if (status === "PROCESSING" || status === "PENDING")
     return (
-      <Badge className="badge-processing">
+      <Badge className={status === "PROCESSING" ? "badge-processing" : "badge-pending border border-gray-700"}>
         <Loader2 className="w-3 h-3 mr-1 animate-spin" />
         {STATUS_LABEL[status]}
       </Badge>
     );
-  if (status === "PENDING")
-    return <Badge variant="outline" className="badge-pending">{STATUS_LABEL[status]}</Badge>;
   return <Badge variant="destructive">{STATUS_LABEL[status]}</Badge>;
 }
 
@@ -108,13 +106,14 @@ export const ExportManager = () => {
   const { data, isLoading, page, setPage, totalPages, totalCount } =
     useServerTable<ExportRecord>("/audit/exports/list/", {
       pageSize: 10,
+      urlParam: "p",
       // En React Query v5, refetchInterval recibe el objeto Query completo
       refetchInterval: (query: any) => {
         const results: ExportRecord[] = query?.state?.data?.results ?? [];
         const hasActive = results.some(
           (e) => e.status === "PENDING" || e.status === "PROCESSING"
         );
-        return hasActive ? 3000 : false;
+        return hasActive ? 1000 : false;
       },
     });
 
@@ -132,7 +131,7 @@ export const ExportManager = () => {
             <SelectTrigger className="action-panel-select">
               <SelectValue placeholder="Seleccionar tipo" />
             </SelectTrigger>
-            <SelectContent className="action-panel-select">
+            <SelectContent className="action-panel-select-content">
               <SelectItem value="AUDIT_LOGS">Logs de Auditoría</SelectItem>
               <SelectItem value="ACCESS_LOGS">Logs de Acceso</SelectItem>
             </SelectContent>
@@ -145,7 +144,7 @@ export const ExportManager = () => {
             <SelectTrigger className="action-panel-select">
               <SelectValue placeholder="Formato" />
             </SelectTrigger>
-            <SelectContent className="action-panel-select">
+            <SelectContent className="action-panel-select-content">
               <SelectItem value="csv">CSV</SelectItem>
               <SelectItem value="json">JSON</SelectItem>
             </SelectContent>
