@@ -176,4 +176,96 @@
   .password-change-container {
     @apply bg-gray-800 rounded-xl p-6 border border-gray-700;
   }
+
+  /* ─── Export Manager / Panel de Acción ──────────────────────────────────── */
+  .action-panel {
+    @apply flex flex-col md:flex-row md:items-end gap-4 bg-gray-800/50 p-6 rounded-xl border border-gray-700;
+  }
+
+  .action-panel-field {
+    @apply flex-1 space-y-2;
+  }
+
+  .action-panel-field-sm {
+    @apply w-full md:w-32 space-y-2;
+  }
+
+  .action-panel-label {
+    @apply text-sm font-medium text-gray-300;
+  }
+
+  .action-panel-select {
+    @apply bg-gray-900 border-gray-700 text-white;
+  }
+
+  .action-panel-btn {
+    @apply bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/20;
+  }
+
+  /* ─── Tabla de datos ─────────────────────────────────────────────────────── */
+  .table-container {
+    @apply bg-gray-900/50 rounded-xl border border-gray-800 overflow-hidden;
+  }
+
+  .table-header-row {
+    @apply border-gray-800 hover:bg-transparent;
+  }
+
+  .table-head {
+    @apply text-gray-400;
+  }
+
+  .table-head-right {
+    @apply text-gray-400 text-right;
+  }
+
+  .table-row {
+    @apply border-gray-800 hover:bg-gray-800/30 transition-colors;
+  }
+
+  .table-cell-primary {
+    @apply font-medium text-gray-200;
+  }
+
+  .table-cell-secondary {
+    @apply text-gray-400;
+  }
+
+  .table-cell-empty {
+    @apply text-center py-10 text-gray-500;
+  }
+
+  .table-file-icon {
+    @apply flex items-center gap-2;
+  }
+
+  .table-file-icon-indicator {
+    @apply w-4 h-4 text-blue-400;
+  }
+
+  .table-format-tag {
+    @apply text-xs text-gray-500 uppercase;
+  }
+
+  /* ─── Status Badges ──────────────────────────────────────────────────────── */
+  .badge-completed {
+    @apply bg-green-500/20 text-green-400 border-green-500/50;
+  }
+
+  .badge-processing {
+    @apply bg-blue-500/20 text-blue-400 border-blue-500/50 animate-pulse;
+  }
+
+  .badge-pending {
+    @apply text-gray-400;
+  }
+
+  /* ─── Download / Error actions ───────────────────────────────────────────── */
+  .download-btn {
+    @apply text-blue-400 hover:text-blue-300 hover:bg-blue-400/10;
+  }
+
+  .error-label {
+    @apply text-xs text-red-400 italic;
+  }
 }

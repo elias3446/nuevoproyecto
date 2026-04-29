@@ -3,11 +3,13 @@ from rest_framework.response import Response
 from .models import Export
 from .serializers import ExportSerializer, ExportRequestSerializer
 from .tasks import process_data_export_task
+from .pagination import ExportsPagination
+
 
 class ExportCreateView(generics.CreateAPIView):
     """
     POST: Solicitar una nueva exportación de datos.
-    Inicia la tarea asíncrona en Celery.
+    Inicia la tarea asíncrona en Celery e invalida el caché Redis del usuario.
     """
     serializer_class = ExportRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -28,7 +30,7 @@ class ExportCreateView(generics.CreateAPIView):
         # 2. Registrar el acceso/exportación en AccessLog
         from audit.models import AccessLog, AuditAction
         from users.utils import get_client_ip
-        
+
         AccessLog.objects.create(
             user=request.user,
             action=AuditAction.EXPORT,
@@ -41,12 +43,14 @@ class ExportCreateView(generics.CreateAPIView):
 
         # 3. Disparar tarea de Celery
         task = process_data_export_task.delay(str(export.id))
-        
+
         # 4. Guardar el task_id para seguimiento
         export.task_id = task.id
         export.save()
 
-        # 4. Responder al cliente
+        # 5. Invalidar caché Redis del usuario para que la lista se refresque
+        ExportsPagination.invalidate('exports', str(request.user.id))
+
         return Response({
             "message": "Exportación iniciada. Recibirá una notificación cuando esté lista.",
             "export_id": export.id,
@@ -54,15 +58,19 @@ class ExportCreateView(generics.CreateAPIView):
             "task_id": export.task_id
         }, status=status.HTTP_202_ACCEPTED)
 
+
 class ExportListView(generics.ListAPIView):
     """
-    GET: Listar exportaciones recientes del usuario.
+    GET: Listar exportaciones del usuario con paginación cacheada en Redis.
+    Query params: page (default 1), page_size (default 10, max 100).
     """
     serializer_class = ExportSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = ExportsPagination
 
     def get_queryset(self):
         return Export.objects.filter(user=self.request.user).order_by('-created_at')
+
 
 class ExportDetailView(generics.RetrieveAPIView):
     """
@@ -74,3 +82,4 @@ class ExportDetailView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         return Export.objects.filter(user=self.request.user)
+
