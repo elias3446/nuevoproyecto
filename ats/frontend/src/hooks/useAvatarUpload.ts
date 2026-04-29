@@ -38,9 +38,47 @@ export const useAvatarUpload = () => {
       });
 
       const data: FileUploadResponse = response.data;
+      let finalFileId = data.id;
+
+      // Si la subida es asíncrona, esperar a que se complete
+      if (data.upload_id) {
+        let attempts = 0;
+        const maxAttempts = 30; // 30 segundos máximo
+        
+        while (attempts < maxAttempts) {
+          const statusRes = await api.get(`/storage/upload/status/${data.upload_id}/`);
+          const statusData = statusRes.data;
+          
+          if (statusData.status === 'COMPLETED') {
+            finalFileId = statusData.metadata.storage_object_id;
+            break;
+          } else if (statusData.status === 'FAILED') {
+            throw new Error(statusData.error_message || "La subida falló en el servidor");
+          }
+          
+          // Esperar 1 segundo antes del próximo intento
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          attempts++;
+        }
+
+        if (!finalFileId) {
+          throw new Error("Tiempo de espera agotado al procesar la imagen");
+        }
+      }
+
+      if (!finalFileId) {
+        throw new Error("No se recibió un ID de archivo válido");
+      }
       
-      // Actualizar perfil del usuario con la URL del avatar
-      const downloadUrl = data.download_url || `${window.location.origin}/api/storage/files/${data.id}/`;
+      // Obtener los detalles del archivo para conseguir la URL de descarga real (media url)
+      const fileDetailRes = await api.get(`/storage/files/${finalFileId}/`);
+      const downloadUrl = fileDetailRes.data.download_url;
+
+      if (!downloadUrl) {
+        throw new Error("No se pudo obtener la URL de descarga de la imagen");
+      }
+
+      // Actualizar perfil del usuario con la URL de descarga real
       await api.patch('/me/', {
         avatar_url: downloadUrl
       });

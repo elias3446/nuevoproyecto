@@ -93,6 +93,20 @@ export interface FileUploadResponse {
   download_url?: string;
   file_size: number;
   mime_type: string;
+  // Para respuestas asíncronas
+  message?: string;
+  upload_id?: string;
+  status?: string;
+}
+
+export interface AsyncUploadStatusResponse {
+  id: string;
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  error_message?: string;
+  metadata: {
+    storage_object_id?: string;
+    [key: string]: any;
+  };
 }
 
 // User type update for avatar
