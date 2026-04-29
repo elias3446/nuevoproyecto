@@ -66,6 +66,11 @@ class AccessLog(models.Model):
     resource_id = models.UUIDField(null=True, blank=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True)
+    device_info = models.JSONField(null=True, blank=True, help_text="Detalles del navegador y OS")
+    country = models.CharField(max_length=100, blank=True)
+    country_code = models.CharField(max_length=10, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    state = models.CharField(max_length=100, blank=True)
     reason = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -84,6 +89,12 @@ class AccessLog(models.Model):
 
 
 class Export(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', 'Pendiente'
+        PROCESSING = 'PROCESSING', 'Procesando'
+        COMPLETED = 'COMPLETED', 'Completado'
+        FAILED = 'FAILED', 'Fallido'
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -93,9 +104,13 @@ class Export(models.Model):
     export_type = models.CharField(max_length=50)
     filters = models.JSONField(default=dict, blank=True)
     format = models.CharField(max_length=10, choices=ExportFormat.choices)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    task_id = models.CharField(max_length=255, null=True, blank=True)
     record_count = models.PositiveIntegerField(default=0)
-    file_url = models.URLField(blank=True)
+    file_url = models.URLField(blank=True, max_length=500)
+    error_message = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'exports'

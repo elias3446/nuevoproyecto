@@ -20,3 +20,7 @@ celery[redis]
 django-celery-beat
 django-celery-results
 
+# Storage
+django-storages[boto3]
+python-magic
+

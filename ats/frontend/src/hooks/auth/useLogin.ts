@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { api } from "@/integrations/backend/client";
+import { publicApi } from "@/integrations/backend/client";
 
 export const useLogin = () => {
   const [email, setEmail] = useState("");
@@ -12,7 +12,7 @@ export const useLogin = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await api.post("/login/", { 
+      const response = await publicApi.post("/login/", { 
         email, 
         password,
         remember_me: rememberMe 

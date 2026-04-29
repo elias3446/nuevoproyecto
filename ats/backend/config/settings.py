@@ -67,6 +67,8 @@ INSTALLED_APPS = [
     'ats_roles',
     'ats',
     'audit',
+    # Storage App
+    'storage_app',
 ]
 
 MIDDLEWARE = [
@@ -153,7 +155,7 @@ else:
         },
         'common_db': {
             **_db_base,
-            'OPTIONS': { **_db_options, 'options': '-c search_path=django,auth,public' },
+            'OPTIONS': { **_db_options, 'options': '-c search_path=storage,django,auth,public' },
         },
         'roles_db': {
             **_db_base,
@@ -192,7 +194,7 @@ PASSWORD_HASHERS = [
 # REST Framework & JWT settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'users.authentication.SessionJWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
@@ -332,3 +334,21 @@ if not FRONTEND_URL or "${FRONTEND_PORT}" in FRONTEND_URL:
         FRONTEND_URL = f"http://{_server_ip}:3000"
     else:
         FRONTEND_URL = f"https://{_server_ip}"
+
+# ─── Storage Configuration ─────────────────────────────────────────────
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
+# File upload limits
+MAX_UPLOAD_SIZE = int(os.environ.get("MAX_UPLOAD_SIZE", 50 * 1024 * 1024))  # 50MB default
+USER_STORAGE_QUOTA = int(os.environ.get("USER_STORAGE_QUOTA", 1024 * 1024 * 1024))  # 1GB default
+ALLOWED_MIME_TYPES = None  # None = no format restriction (per requirements)

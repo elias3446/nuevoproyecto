@@ -22,8 +22,9 @@ from .utils import (
     update_session_jti,
     invalidate_all_user_sessions,
     invalidate_all_user_tokens,
-    get_active_sessions,
+    get_active_sessions
 )
+from .redis_manager import RedisSessionManager
 from .notifications import (
     notify_session_revoked,
     notify_session_revoked_to_user,
@@ -46,6 +47,9 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         
+        ip = get_client_ip(request)
+        geo = get_geolocation(ip)
+        
         try:
             serializer.is_valid(raise_exception=True)
         except Exception as e:
@@ -53,10 +57,16 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             if user:
                 register_login_activity(
                     user=user,
-                    ip_address=get_client_ip(request),
+                    ip_address=ip,
                     device_info=parse_user_agent(request),
-                    country='',
-                    city='',
+                    country=geo.get('country', 'Unknown'),
+                    country_code=geo.get('country_code', 'XX'),
+                    city=geo.get('city', 'Unknown'),
+                    state=geo.get('state', 'Unknown'),
+                    isp=geo.get('isp', 'Unknown'),
+                    is_vpn=geo.get('is_vpn', False),
+                    is_proxy=geo.get('is_proxy', False),
+                    risk_score=geo.get('risk_score', 0),
                     success=False,
                     risk_level='high',
                 )
@@ -65,8 +75,6 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         user = serializer.user
         remember_me = request.data.get('remember_me', False)
         
-        ip = get_client_ip(request)
-        geo = get_geolocation(ip)
         device_info = parse_user_agent(request)
         
         history = list(
@@ -83,8 +91,14 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             user=user,
             ip_address=ip,
             device_info=device_info,
-            country=geo.get('country', ''),
-            city=geo.get('city', ''),
+            country=geo.get('country', 'Unknown'),
+            country_code=geo.get('country_code', 'XX'),
+            city=geo.get('city', 'Unknown'),
+            state=geo.get('state', 'Unknown'),
+            isp=geo.get('isp', 'Unknown'),
+            is_vpn=geo.get('is_vpn', False),
+            is_proxy=geo.get('is_proxy', False),
+            risk_score=geo.get('risk_score', 0),
             success=True,
             risk_level=risk_level,
         )
@@ -146,8 +160,14 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                         refresh_token_jti=jti,
                         ip_address=ip,
                         device_info=device_info,
-                        country=geo.get('country', ''),
-                        city=geo.get('city', ''),
+                        country=geo.get('country', 'Unknown'),
+                        country_code=geo.get('country_code', 'XX'),
+                        city=geo.get('city', 'Unknown'),
+                        state=geo.get('state', 'Unknown'),
+                        isp=geo.get('isp', 'Unknown'),
+                        is_vpn=geo.get('is_vpn', False),
+                        is_proxy=geo.get('is_proxy', False),
+                        risk_score=geo.get('risk_score', 0),
                         is_suspicious=is_suspicious,
                     )
                     
@@ -189,9 +209,13 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         
-        # Enviar correo de bienvenida (Celery)
-        from .tasks import send_welcome_email_task
+        # Enviar correo de bienvenida y finalizar registro (Asíncrono)
+        from .tasks import send_welcome_email_task, complete_user_registration_task
+        ip = get_client_ip(request)
+        ua = request.META.get('HTTP_USER_AGENT', '')
+        
         send_welcome_email_task.delay(user.email)
+        complete_user_registration_task.delay(str(user.id), ip, ua)
         
         # Generar tokens automáticamente al registrarse
         refresh = RefreshToken.for_user(user)
@@ -214,9 +238,13 @@ class RegisterSuperuserView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         
-        # Enviar correo de bienvenida (Celery)
-        from .tasks import send_welcome_email_task
+        # Finalizar registro (Asíncrono)
+        from .tasks import send_welcome_email_task, complete_user_registration_task
+        ip = get_client_ip(request)
+        ua = request.META.get('HTTP_USER_AGENT', '')
+        
         send_welcome_email_task.delay(user.email)
+        complete_user_registration_task.delay(str(user.id), ip, ua)
         
         refresh = RefreshToken.for_user(user)
         
@@ -227,12 +255,40 @@ class RegisterSuperuserView(generics.CreateAPIView):
             "refresh": str(refresh),
         }, status=status.HTTP_201_CREATED)
 
-class UserProfileView(generics.RetrieveAPIView):
+class UserProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = UserSerializer
 
     def get_object(self):
         return self.request.user
+
+    def patch(self, request, *args, **kwargs):
+        user = self.get_object()
+        
+        if 'avatar_url' in request.data:
+            avatar_url = request.data.get('avatar_url')
+            # Update avatar_url in raw_user_meta_data
+            meta = user.raw_user_meta_data or {}
+            if avatar_url is None:
+                meta.pop('avatar_url', None)
+            else:
+                meta['avatar_url'] = avatar_url
+            user.raw_user_meta_data = meta
+            user.save()
+            
+            # Audit log
+            from audit.models import AuditLog
+            AuditLog.objects.create(
+                user=user,
+                action='UPDATE',
+                table_name='auth.users',
+                record_id=user.id,
+                new_values={'avatar_url': avatar_url},
+                ip_address=request.META.get('REMOTE_ADDR'),
+                user_agent=request.META.get('HTTP_USER_AGENT', '')
+            )
+        
+        return Response(UserSerializer(user).data)
 
 class LogoutView(generics.GenericAPIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -280,6 +336,24 @@ class TokenRefreshCookieView(TokenRefreshView):
             return Response({"error": "No refresh token found"}, status=status.HTTP_401_UNAUTHORIZED)
         
         request.data['refresh'] = refresh_token
+        
+        # Validar que la sesión asociada al refresh token siga activa en Redis
+        try:
+            token = RefreshToken(refresh_token)
+            session_id = token.get('session_id')
+            if session_id:
+                if not RedisSessionManager.is_session_active(str(session_id)):
+                    # Fallback a DB
+                    from .models import UserSession
+                    try:
+                        session = UserSession.objects.get(id=session_id, is_active=True)
+                        # Repoblar Redis
+                        RedisSessionManager.create_session(str(session_id), str(session.user.id), {"id": session.id})
+                    except UserSession.DoesNotExist:
+                        return Response({"error": "Session revoked"}, status=status.HTTP_401_UNAUTHORIZED)
+        except Exception:
+            pass
+
         return super().post(request, *args, **kwargs)
 
     def finalize_response(self, request, response, *args, **kwargs):
@@ -402,9 +476,10 @@ class RevokeSessionView(APIView):
             session = UserSession.objects.get(id=session_id, user=request.user, is_active=True)
             session_id_val = session.id
             
-            # 1. Marcar como inactiva de forma SÍNCRONA para persistencia inmediata
+            # 1. Marcar como inactiva en DB y Redis
             session.is_active = False
             session.save()
+            RedisSessionManager.revoke_session(str(session_id_val), str(request.user.id))
             
             # 2. Solicitar a Redis/Celery que invalide el token (Blacklist)
             revoke_session_token_task.delay(session_id_val)
@@ -431,7 +506,8 @@ class LogoutAllDevicesView(APIView):
         active_sessions = UserSession.objects.filter(user=request.user, is_active=True)
         count = active_sessions.count()
         
-        # 1. Marcar todas las sesiones como inactivas de forma SÍNCRONA
+        # 1. Marcar todas las sesiones como inactivas en Redis y DB
+        RedisSessionManager.revoke_all_user_sessions(str(request.user.id))
         active_sessions.update(is_active=False)
         
         # 2. Solicitar a Redis/Celery la invalidación de cada token (Blacklist)
@@ -503,40 +579,15 @@ class PasswordResetRequestView(APIView):
 
         reset_url = f"{settings.FRONTEND_URL}/password-reset/confirm/{token}"
 
-        try:
-            subject = 'Recuperación de Contraseña'
-            message = f'''
-Hola {user.email},
-
-Has solicitado recuperar tu contraseña. Haz clic en el siguiente enlace para crear una nueva contraseña:
-
-{reset_url}
-
-Este enlace expire en 15 minutos y solo puede usarse una vez.
-
-Si no solicitaste este cambio, puedes ignorar este correo.
-
-Saludos,
-El equipo de ATS.
-'''
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-                fail_silently=False,
-            )
-        except Exception as e:
-            logger.error(f"Error enviando correo de recuperación a {user.email}: {str(e)}")
-            return Response(
-                {'error': 'Error al enviar el correo. Intenta más tarde.'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        # Enviar correo de recuperación asíncronamente
+        from .tasks import send_password_reset_email_task
+        send_password_reset_email_task.delay(user.email, reset_url)
 
         return Response(
             {'detail': 'Si el correo existe, recibirás un enlace de recuperación'},
             status=status.HTTP_200_OK
         )
+
 
 
 class PasswordResetValidateTokenView(APIView):
@@ -628,8 +679,14 @@ class PasswordResetConfirmView(APIView):
         reset_token.used = True
         reset_token.save()
 
-        from .utils import invalidate_all_user_sessions
+        from .utils import invalidate_all_user_sessions, get_client_ip
         invalidate_all_user_sessions(user)
+
+        # Notificación y Auditoría (Asíncrono)
+        from .tasks import notify_password_change_task
+        ip = get_client_ip(request)
+        ua = request.META.get('HTTP_USER_AGENT', '')
+        notify_password_change_task.delay(str(user.id), ip, ua)
 
         return Response(
             {'detail': 'Contraseña actualizada correctamente. Por favor, inicia sesión con tu nueva contraseña.'},
@@ -679,8 +736,14 @@ class PasswordChangeView(APIView):
         user.set_password(new_password)
         user.save()
 
-        from .utils import invalidate_all_user_sessions
+        from .utils import invalidate_all_user_sessions, get_client_ip
         invalidate_all_user_sessions(user)
+
+        # Notificación y Auditoría (Asíncrono)
+        from .tasks import notify_password_change_task
+        ip = get_client_ip(request)
+        ua = request.META.get('HTTP_USER_AGENT', '')
+        notify_password_change_task.delay(str(user.id), ip, ua)
 
         refresh_token = request.COOKIES.get(AUTH_COOKIE)
         if refresh_token:

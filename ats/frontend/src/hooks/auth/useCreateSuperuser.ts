@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { api } from "@/integrations/backend/client";
+import { publicApi } from "@/integrations/backend/client";
 
 export const useCreateSuperuser = () => {
   const [email, setEmail] = useState("");
@@ -12,7 +12,7 @@ export const useCreateSuperuser = () => {
     setLoading(true);
     
     try {
-      const response = await api.post("/register-superuser/", { 
+      const response = await publicApi.post("/register-superuser/", { 
         email, 
         password 
       });

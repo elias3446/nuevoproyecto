@@ -19,6 +19,35 @@ export default defineConfig(({ mode }) => {
         "/api": {
           target: env.VITE_API_PROXY_TARGET || `http://localhost:${env.APP_PORT || 8000}`,
           changeOrigin: true,
+          xfwd: true,
+          configure: (proxy, _options) => {
+            proxy.on('proxyReq', (proxyReq, req, _res) => {
+              const ip = req.socket.remoteAddress || "";
+              proxyReq.setHeader('X-Forwarded-For', ip);
+            });
+          },
+        },
+        "/media": {
+          target: env.VITE_API_PROXY_TARGET || `http://localhost:${env.APP_PORT || 8000}`,
+          changeOrigin: true,
+          xfwd: true,
+          configure: (proxy, _options) => {
+            proxy.on('proxyReq', (proxyReq, req, _res) => {
+              const ip = req.socket.remoteAddress || "";
+              proxyReq.setHeader('X-Forwarded-For', ip);
+            });
+          },
+        },
+        "/ws": {
+          target: env.VITE_API_PROXY_TARGET || `http://localhost:${env.APP_PORT || 8000}`,
+          ws: true,
+          xfwd: true,
+          configure: (proxy, _options) => {
+            proxy.on('proxyReq', (proxyReq, req, _res) => {
+              const ip = req.socket.remoteAddress || "";
+              proxyReq.setHeader('X-Forwarded-For', ip);
+            });
+          },
         },
       },
       hmr: {

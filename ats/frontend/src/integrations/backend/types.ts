@@ -72,5 +72,46 @@ export interface PasswordResetValidateResponse {
   error?: string;
 }
 
+// Storage types
+export interface StorageObject {
+  id: string;
+  bucket_id: string;
+  name: string;
+  file_name: string;
+  file_size: number;
+  mime_type: string;
+  metadata: Record<string, any>;
+  user_metadata: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+  download_url?: string;
+}
+
+export interface FileUploadResponse {
+  id: string;
+  name: string;
+  download_url?: string;
+  file_size: number;
+  mime_type: string;
+}
+
+// User type update for avatar
+export interface User {
+  id: string; // UUID
+  email: string;
+  is_active: boolean;
+  is_staff: boolean;
+  raw_app_meta_data: Record<string, any>;
+  raw_user_meta_data: {
+    avatar_url?: string;
+    [key: string]: any;
+  };
+  created_at: string; // ISO DateTime
+  updated_at: string; // ISO DateTime
+  last_sign_in_at: string | null;
+  // Computed
+  avatar_url?: string;
+}
+
 // Aquí puedes añadir más interfaces para tus modelos de Django
 // ejemplo: export interface Post { id: number; title: string; content: string; author: User; }

@@ -22,11 +22,16 @@ server {
     include /etc/nginx/mime.types;
     default_type application/octet-stream;
 
-    # Frontend (React/Vite build)
+    # Frontend (Proxy al servidor de desarrollo Vite)
     location / {
-        root /usr/share/nginx/html;
-        index index.html index.htm;
-        try_files $uri $uri/ /index.html;
+        proxy_pass http://frontend-dev:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     # Bloque especÃ­fico para assets de Vite (con cachÃ© agresiva)
@@ -56,6 +61,10 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Ajustes de tiempo para evitar desconexiones prematuras
+        proxy_read_timeout 86400;
+        proxy_send_timeout 86400;
     }
 
     # Django Admin

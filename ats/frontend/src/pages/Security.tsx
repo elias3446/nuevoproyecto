@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useSessions } from "@/hooks/auth/useSessions";
 import { SessionsList } from "@/components/security/SessionsList";
 import { PasswordChangeForm } from "@/components/security/PasswordChangeForm";
+import { ExportManager } from "@/components/security/ExportManager";
 
 const Security = () => {
   const { sessions, loading, revokeSession, revokeAllSessions, fetchSessions } =
     useSessions();
-  const [activeTab, setActiveTab] = useState<"sessions" | "password">("sessions");
+  const [activeTab, setActiveTab] = useState<"sessions" | "password" | "exports">("sessions");
 
   return (
     <div className="security-page">
@@ -26,9 +27,15 @@ const Security = () => {
           >
             Cambiar Contraseña
           </button>
+          <button
+            className={`security-tab ${activeTab === "exports" ? "active" : ""}`}
+            onClick={() => setActiveTab("exports")}
+          >
+            Logs y Exportaciones
+          </button>
         </div>
 
-        {activeTab === "sessions" ? (
+        {activeTab === "sessions" && (
           <SessionsList
             sessions={sessions}
             loading={loading}
@@ -36,9 +43,17 @@ const Security = () => {
             onRevokeAllSessions={revokeAllSessions}
             onRefresh={fetchSessions}
           />
-        ) : (
+        )}
+        
+        {activeTab === "password" && (
           <div className="password-change-container">
             <PasswordChangeForm />
+          </div>
+        )}
+
+        {activeTab === "exports" && (
+          <div className="export-manager-container mt-6">
+            <ExportManager />
           </div>
         )}
       </div>

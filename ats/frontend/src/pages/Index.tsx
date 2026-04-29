@@ -1,14 +1,16 @@
 import { useState } from "react";
-import { LayoutDashboard, Briefcase, Users, FileText, ClipboardList, BarChart3, Shield } from "lucide-react";
+import { LayoutDashboard, Briefcase, Users, FileText, ClipboardList, BarChart3, Shield, UserCircle } from "lucide-react";
 import { TopNav } from "@/components/ui/TopNav";
 import { Sidebar, NavItem } from "@/components/ui/sidebar";
 import { ContentPanel } from "@/components/ui/ContentPanel";
 import { useLogout } from "@/hooks/auth/useLogout";
+import { useProfile } from "@/hooks/auth/useProfile";
 
 const Index = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activePage, setActivePage] = useState("dashboard");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user } = useProfile();
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -24,6 +26,7 @@ const Index = () => {
     { id: "cv-espontaneos", label: "CV Espontáneos", icon: <FileText size={20} /> },
     { id: "formularios", label: "Formularios", icon: <ClipboardList size={20} /> },
     { id: "analytics", label: "Analytics", icon: <BarChart3 size={20} /> },
+    { id: "profile", label: "Perfil", icon: <UserCircle size={20} /> },
     { id: "settings", label: "Seguridad", icon: <Shield size={20} /> },
   ];
 
@@ -46,6 +49,7 @@ const Index = () => {
           navigation={sidebarNavigation}
           handleLogout={handleLogout}
           useFullHeight={true}
+          user={user}
         />
       </div>
       
@@ -61,18 +65,19 @@ const Index = () => {
           toggleMobileMenu={toggleMobileMenu}
           toggleSidebar={toggleSidebar}
           sidebar={
-            <Sidebar 
-              isSidebarOpen={true}
-              toggleSidebar={toggleMobileMenu}
-              activePage={activePage}
-              setActivePage={handleNavigationClick}
-              navigation={sidebarNavigation}
-              handleLogout={() => {
-                handleLogout();
-                setIsMobileMenuOpen(false);
-              }}
-              useFullHeight={true}
-            />
+              <Sidebar 
+                  isSidebarOpen={true}
+                  toggleSidebar={toggleMobileMenu}
+                  activePage={activePage}
+                  setActivePage={handleNavigationClick}
+                  navigation={sidebarNavigation}
+                  handleLogout={() => {
+                    handleLogout();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  useFullHeight={true}
+                  user={user}
+                />
           }
         />
         

@@ -1,6 +1,8 @@
-import { Menu, LogOut, Globe } from "lucide-react";
+import { Menu, LogOut, Globe, UserCircle } from "lucide-react";
 import { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import type { User } from "@/integrations/backend/types";
 
 export type NavItem = {
   id: string;
@@ -17,6 +19,7 @@ interface SidebarProps {
   navigation: NavItem[];
   handleLogout: () => void;
   useFullHeight?: boolean;
+  user?: User;
 }
 
 export const Sidebar = ({
@@ -27,6 +30,7 @@ export const Sidebar = ({
   navigation,
   handleLogout,
   useFullHeight = false,
+  user,
 }: SidebarProps) => {
   return (
     <aside 
@@ -45,6 +49,23 @@ export const Sidebar = ({
           <Menu size={22} className="stroke-[2.5]" />
         </button>
       </div>
+
+      {/* User Info */}
+      {isSidebarOpen && user && (
+        <div className="px-4 py-3 border-b border-gray-700/50">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={user.raw_user_meta_data?.avatar_url} />
+              <AvatarFallback className="text-xs bg-gray-700">
+                {user.email?.charAt(0).toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-white truncate">{user.email}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Links de Navegación */}
       <nav className="flex-1 overflow-y-auto py-6">

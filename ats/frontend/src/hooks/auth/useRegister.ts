@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { api } from "@/integrations/backend/client";
+import { publicApi } from "@/integrations/backend/client";
 
 export const useRegister = () => {
   const [email, setEmail] = useState("");
@@ -23,7 +23,7 @@ export const useRegister = () => {
 
     setLoading(true);
     try {
-      const response = await api.post("/register/", { email, password });
+      const response = await publicApi.post("/register/", { email, password });
       if (response.status === 201) {
         toast.success("Cuenta creada exitosamente");
         window.location.href = "/login";

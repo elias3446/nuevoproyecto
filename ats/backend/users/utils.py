@@ -4,19 +4,28 @@ import json
 from typing import Optional
 from datetime import timedelta
 from django.utils import timezone
+from django.core.cache import cache
 from .models import UserSession, UserLoginActivity
+from .redis_manager import RedisSessionManager
+from audit.models import AccessLog, AuditAction
 
 logger = logging.getLogger(__name__)
 
+# Tiempos de expiración (pueden venir de settings)
+SESSION_TIMEOUT = 86400 * 30  # 30 días
+
 
 def get_client_ip(request) -> str:
-    """Extrae la IP real del cliente."""
+    """Extrae la IP real del cliente manejando proxies."""
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    remote_addr = request.META.get('REMOTE_ADDR')
+    
     if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0].strip()
-    else:
-        ip = request.META.get('REMOTE_ADDR', '')
-    return ip or '127.0.0.1'
+        ips = [ip.strip() for ip in x_forwarded_for.split(',')]
+        # Retornamos la primera IP de la lista (el cliente real según el proxy)
+        return ips[0]
+        
+    return remote_addr or '127.0.0.1'
 
 
 def parse_user_agent(request) -> dict:
@@ -69,18 +78,32 @@ def get_geolocation(ip: str) -> dict:
     
     try:
         # Usamos urllib para no añadir dependencias como 'requests'
-        url = f"http://ip-api.com/json/{ip}?fields=status,countryCode,city"
+        url = f"http://ip-api.com/json/{ip}?fields=status,country,countryCode,regionName,city,isp,proxy,vpn,query"
         with urllib.request.urlopen(url, timeout=2) as response:
             data = json.loads(response.read().decode())
             if data.get('status') == 'success':
                 return {
-                    'country': data.get('countryCode', 'XX'),
-                    'city': data.get('city', 'Unknown')
+                    'country': data.get('country', 'Unknown'),
+                    'country_code': data.get('countryCode', 'XX'),
+                    'state': data.get('regionName', 'Unknown'),
+                    'city': data.get('city', 'Unknown'),
+                    'isp': data.get('isp', 'Unknown'),
+                    'is_proxy': data.get('proxy', False),
+                    'is_vpn': data.get('vpn', False),
                 }
     except Exception as e:
         logger.error(f"Error en geolocalización para IP {ip}: {e}")
         
-    return {'country': 'XX', 'city': 'Unknown'}
+    return {
+        'country': 'Unknown', 
+        'country_code': 'XX', 
+        'state': 'Unknown', 
+        'city': 'Unknown',
+        'isp': 'Unknown',
+        'is_proxy': False,
+        'is_vpn': False,
+        'risk_score': 0
+    }
 
 
 def is_device_info_valid(device_info: dict) -> bool:
@@ -174,19 +197,48 @@ def register_login_activity(
     country: str,
     city: str,
     success: bool,
-    risk_level: str
+    risk_level: str,
+    country_code: str = '',
+    state: str = '',
+    isp: str = '',
+    is_vpn: bool = False,
+    is_proxy: bool = False,
+    risk_score: int = 0
 ) -> UserLoginActivity:
     """Registra un intento de login en el historial."""
-    return UserLoginActivity.objects.create(
+    activity = UserLoginActivity.objects.create(
         user=user,
         ip_address=ip_address,
         country=country,
+        country_code=country_code,
         city=city,
+        state=state,
+        isp=isp,
+        is_vpn=is_vpn,
+        is_proxy=is_proxy,
+        risk_score=risk_score,
         user_agent=device_info.get('raw', ''),
         device_info=device_info,
         success=success,
         risk_level=risk_level,
     )
+    
+    # También registrar en AccessLog para centralizar auditoría de accesos
+    if success:
+        AccessLog.objects.create(
+            user=user,
+            action=AuditAction.LOGIN,
+            ip_address=ip_address,
+            user_agent=device_info.get('raw', ''),
+            device_info=device_info,
+            country=country,
+            country_code=country_code,
+            city=city,
+            state=state,
+            reason=f"Login exitoso - Nivel de riesgo: {risk_level}"
+        )
+    
+    return activity
 
 
 def create_user_session(
@@ -196,22 +248,48 @@ def create_user_session(
     device_info: dict,
     country: str,
     city: str,
-    is_suspicious: bool = False
+    is_suspicious: bool = False,
+    country_code: str = '',
+    state: str = '',
+    isp: str = '',
+    is_vpn: bool = False,
+    is_proxy: bool = False,
+    risk_score: int = 0
 ) -> UserSession:
     """Crea una nueva sesión de usuario."""
     UserSession.objects.filter(user=user, is_current=True).update(is_current=False)
     
-    return UserSession.objects.create(
+    session = UserSession.objects.create(
         user=user,
         refresh_token_jti=refresh_token_jti,
         device_info=device_info,
         ip_address=ip_address,
         country=country,
+        country_code=country_code,
         city=city,
+        state=state,
+        isp=isp,
+        is_vpn=is_vpn,
+        is_proxy=is_proxy,
+        risk_score=risk_score,
         user_agent=device_info.get('raw', ''),
         is_current=True,
         is_suspicious=is_suspicious,
     )
+    
+    # 2. Persistir en Redis (Capa de persistencia rápida)
+    session_data = {
+        "id": session.id,
+        "user_id": str(user.id),
+        "ip_address": ip_address,
+        "device_info": device_info,
+        "location": f"{city}, {country}",
+        "is_suspicious": is_suspicious,
+        "created_at": str(timezone.now()),
+    }
+    RedisSessionManager.create_session(str(session.id), str(user.id), session_data)
+    
+    return session
 
 
 def invalidate_session(jti: str) -> bool:
@@ -220,6 +298,8 @@ def invalidate_session(jti: str) -> bool:
         session = UserSession.objects.get(refresh_token_jti=jti, is_active=True)
         session.is_active = False
         session.save()
+        # Sincronizar con Redis Manager
+        RedisSessionManager.revoke_session(str(session.id), str(session.user.id))
         return True
     except UserSession.DoesNotExist:
         return False
@@ -248,20 +328,17 @@ def update_session_jti(user, old_jti: str, new_jti: str) -> bool:
 
 def invalidate_all_user_sessions(user) -> int:
     """Invalida todas las sesiones de un usuario."""
-    return UserSession.objects.filter(
-        user=user, 
-        is_active=True
-    ).update(is_active=False)
+    # 1. Invalida en Redis de forma atómica (rápido)
+    RedisSessionManager.revoke_all_user_sessions(str(user.id))
+    
+    # 2. Invalida en DB (para historial)
+    count = UserSession.objects.filter(user=user, is_active=True).update(is_active=False)
+    return count
 
 
 def invalidate_all_user_tokens(user) -> int:
     """Invalida todos los refresh tokens del usuario."""
-    return UserSession.objects.filter(
-        user=user, 
-        is_active=True
-    ).update(
-        is_active=False
-    )
+    return invalidate_all_user_sessions(user)
 
 
 def get_active_sessions(user):

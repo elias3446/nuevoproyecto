@@ -15,6 +15,8 @@ class SchemaRouter:
         'ats_roles':             'roles_db',
         'ats':                   'default',
         'audit':                 'audit_db',
+        # Storage App
+        'storage_app':           'common_db',
     }
 
     def db_for_read(self, model, **hints):

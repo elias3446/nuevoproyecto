@@ -45,7 +45,7 @@
   }
 
   .security-container {
-    @apply max-w-2xl mx-auto;
+    @apply max-w-4xl mx-auto;
   }
 
   .security-title {
