@@ -41,14 +41,26 @@ class RedisCachedPageNumberPagination(PageNumberPagination):
 
     @classmethod
     def invalidate(cls, cache_prefix: str, user_id: str):
-        """Elimina todas las páginas cacheadas de un usuario."""
+        """
+        Elimina todas las páginas cacheadas de un usuario.
+        El formato real de la clave en Redis es:
+            {KEY_PREFIX}:1:{cache_prefix}:{user_id}:p{page}:s{page_size}
+        """
+        # Estrategia 1: delete_pattern de django_redis (más eficiente)
         try:
-            from django_redis import get_redis_connection
-            client = get_redis_connection("default")
-            pattern = f"django:{cache_prefix}:{user_id}:*"
-            keys = client.keys(pattern)
-            if keys:
-                client.delete(*keys)
+            cache.delete_pattern(f"*{cache_prefix}:{user_id}:*")
+            return
+        except Exception:
+            pass
+
+        # Estrategia 2: borrar combinaciones conocidas de página/tamaño
+        try:
+            common_sizes = [10, 20, 50, 100]
+            keys = []
+            for page in range(1, 21):       # primeras 20 páginas
+                for size in common_sizes:
+                    keys.append(cls._make_key(cache_prefix, user_id, page, size))
+            cache.delete_many(keys)
         except Exception:
             pass
 
@@ -111,4 +123,4 @@ class RedisCachedPageNumberPagination(PageNumberPagination):
 class ExportsPagination(RedisCachedPageNumberPagination):
     page_size    = 10
     cache_prefix = "exports"
-    cache_ttl    = 60
+    cache_ttl    = 15   # segundos — corto para que datos activos refresquen rápido
