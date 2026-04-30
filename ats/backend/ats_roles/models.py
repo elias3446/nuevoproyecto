@@ -66,13 +66,13 @@ class Permission(models.Model):
     action = models.CharField(
         max_length=50,
         unique=True,
-        choices=PermissionAction.choices
+        help_text="Identificador único de la acción (ej: job:create)"
     )
     description = models.TextField(blank=True)
     category = models.CharField(
-        max_length=20,
-        choices=PermissionCategory.choices,
-        blank=True
+        max_length=50,
+        blank=True,
+        help_text="Categoría lógica (ej: jobs, users)"
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

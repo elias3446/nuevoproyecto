@@ -5,10 +5,20 @@ from .models import UserSession
 User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
+    permissions = serializers.SerializerMethodField()
+    roles = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ('id', 'email', 'created_at', 'raw_user_meta_data')
+        fields = ('id', 'email', 'created_at', 'raw_user_meta_data', 'permissions', 'roles')
         read_only_fields = ('id', 'created_at')
+
+    def get_permissions(self, obj):
+        from ats_roles.services import PermissionService
+        return list(PermissionService.get_user_permissions(obj))
+
+    def get_roles(self, obj):
+        return list(obj.user_roles.values_list('role__name', flat=True))
 
 class UserSessionSerializer(serializers.ModelSerializer):
     class Meta:

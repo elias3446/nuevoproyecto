@@ -5,14 +5,22 @@ import { TopNav } from "@/components/ui/TopNav";
 import { Sidebar, NavItem } from "@/components/ui/sidebar";
 import { ContentPanel } from "@/components/ui/ContentPanel";
 import { useLogout } from "@/hooks/auth/useLogout";
-import { useProfile } from "@/hooks/auth/useProfile";
+import { useGlobalConfig } from "@/hooks/auth/useGlobalConfig";
+
+const IconMapper = (iconName: string) => {
+  const icons: Record<string, any> = {
+    LayoutDashboard, Briefcase, Users, FileText, ClipboardList, BarChart3, Shield, UserCircle
+  };
+  const IconComp = icons[iconName] || LayoutDashboard;
+  return <IconComp size={20} />;
+};
 
 const Index = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user } = useProfile();
+  const { user, uiConfig, loading: configLoading } = useGlobalConfig();
 
   // Determinar activePage basándose en la URL (/dashboard/id o solo /dashboard)
   const activePage = location.pathname.split("/")[2] || "dashboard";
@@ -24,23 +32,29 @@ const Index = () => {
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
   const { handleLogout } = useLogout();
 
-  const sidebarNavigation: NavItem[] = [
-    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} /> },
-    { id: "vacantes", label: "Vacantes", icon: <Briefcase size={20} /> },
-    { id: "candidatos", label: "Candidatos", icon: <Users size={20} /> },
-    { id: "cv-espontaneos", label: "CV Espontáneos", icon: <FileText size={20} /> },
-    { id: "formularios", label: "Formularios", icon: <ClipboardList size={20} /> },
-    { id: "analytics", label: "Analytics", icon: <BarChart3 size={20} /> },
-    { id: "profile", label: "Perfil", icon: <UserCircle size={20} /> },
-    { id: "security", label: "Seguridad", icon: <Shield size={20} /> },
-  ];
+  const sidebarNavigation: NavItem[] = (uiConfig?.menu || []).map(item => ({
+    id: item.id,
+    label: item.label,
+    icon: IconMapper(item.icon)
+  }));
 
   const topNavNavigation: NavItem[] = [];
 
   const handleNavigationClick = (id: string) => {
-    navigate(`/dashboard/${id}`);
+    const target = uiConfig?.menu.find(m => m.id === id);
+    if (target) {
+        navigate(target.route);
+    } else {
+        navigate(`/dashboard/${id}`);
+    }
     setIsMobileMenuOpen(false);
   };
+
+  if (configLoading) {
+    return <div className="min-h-screen flex items-center justify-center bg-gray-900">
+      <div className="animate-pulse text-blue-500 font-medium">Cargando interfaz dinámica...</div>
+    </div>;
+  }
 
   return (
     <div className="index-page">

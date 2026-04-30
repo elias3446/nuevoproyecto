@@ -69,9 +69,11 @@ INSTALLED_APPS = [
     'audit',
     # Storage App
     'storage_app',
+    'tenants',
 ]
 
 MIDDLEWARE = [
+    'tenants.middleware.TenantMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -296,6 +298,31 @@ CELERY_TIMEZONE          = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT   = 30 * 60  # 30 min hard limit
 CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 min soft limit
+CELERY_TASK_DEFAULT_QUEUE = 'default'
+
+# Definición de colas según prioridad y tipo
+from kombu import Queue
+CELERY_TASK_QUEUES = (
+    Queue('urgent', routing_key='urgent'),
+    Queue('default', routing_key='default'),
+    Queue('batch', routing_key='batch'),
+    Queue('io_heavy', routing_key='io_heavy'),
+)
+
+# Enrutamiento automático de tareas
+CELERY_TASK_ROUTES = {
+    # Tareas urgentes
+    'revoke_session_token_task': {'queue': 'urgent'},
+    'notify_password_change_task': {'queue': 'urgent'},
+    
+    # Tareas de procesamiento masivo
+    'cleanup_*': {'queue': 'batch'},
+    'process_data_export_task': {'queue': 'io_heavy'},
+    
+    # Tareas por defecto
+    'send_welcome_email_task': {'queue': 'default'},
+    'complete_user_registration_task': {'queue': 'default'},
+}
 
 # django-celery-beat: usa DB para guardar schedules
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'

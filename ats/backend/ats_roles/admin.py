@@ -10,12 +10,19 @@ class PermissionAdmin(admin.ModelAdmin):
     ordering = ['category', 'action']
 
 
+class RolePermissionInline(admin.TabularInline):
+    model = RolePermission
+    extra = 1
+    autocomplete_fields = ['permission']
+
+
 @admin.register(Role)
 class RoleAdmin(admin.ModelAdmin):
     list_display = ['name', 'description', 'is_system', 'created_at', 'updated_at']
     list_filter = ['is_system']
     search_fields = ['name', 'description']
     ordering = ['name']
+    inlines = [RolePermissionInline]
 
 
 @admin.register(RolePermission)

@@ -125,6 +125,8 @@ export interface User {
   last_sign_in_at: string | null;
   // Computed
   avatar_url?: string;
+  permissions: string[];
+  roles: string[];
 }
 
 // Aquí puedes añadir más interfaces para tus modelos de Django

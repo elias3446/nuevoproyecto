@@ -14,6 +14,9 @@ import Register from "./pages/Register.tsx";
 import Security from "./pages/Security.tsx";
 import PasswordResetRequest from "./pages/PasswordResetRequest.tsx";
 import PasswordResetConfirm from "./pages/PasswordResetConfirm.tsx";
+import TenantRegistration from "./pages/TenantRegistration.tsx";
+import { GlobalConfigProvider } from "./hooks/auth/useGlobalConfig.tsx";
+
 
 const queryClient = new QueryClient();
 
@@ -73,6 +76,7 @@ const RootContainer = () => {
       <Route path="/dashboard/*" element={<Index />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/register-company" element={<TenantRegistration />} />
       <Route path="/password-reset" element={<PasswordResetRequest />} />
       <Route path="/password-reset/confirm/:token" element={<PasswordResetConfirm />} />
       <Route path="/setup-admin" element={<SuperuserSetup />} />
@@ -87,7 +91,9 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <RootContainer />
+        <GlobalConfigProvider>
+          <RootContainer />
+        </GlobalConfigProvider>
       </TooltipProvider>
     </QueryClientProvider>
   </BrowserRouter>

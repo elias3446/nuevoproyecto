@@ -48,7 +48,19 @@ class User(AbstractBaseUser):
 
     def has_perm(self, perm, obj=None):
         """Superadmins tienen todos los permisos; el resto usa ats_roles."""
-        return self.is_superuser
+        if self.is_superuser:
+            return True
+        
+        from ats_roles.services import PermissionService
+        # Si perm es un string de Django (app.action), lo limpiamos o manejamos
+        # Aquí asumimos que perm es una acción de PermissionAction (ej: 'job:create')
+        # o que el usuario está pasando el string correcto.
+        resource_type = obj._meta.model_name if obj else None
+        resource_id = obj.id if obj else None
+        
+        return PermissionService.has_permission(
+            self, perm, resource_type=resource_type, resource_id=resource_id
+        )
 
     def has_module_perms(self, app_label):
         """Superadmins tienen acceso a todos los módulos."""

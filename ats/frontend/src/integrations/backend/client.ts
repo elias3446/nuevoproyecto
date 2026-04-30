@@ -62,6 +62,13 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  // Incluir el tenant si existe en el localStorage o la URL
+  const tenant = localStorage.getItem('tenant_subdomain') || window.location.hostname.split('.')[0];
+  if (tenant && tenant !== 'localhost') {
+    config.headers['X-Tenant-Subdomain'] = tenant;
+  }
+
   return config;
 });
 
