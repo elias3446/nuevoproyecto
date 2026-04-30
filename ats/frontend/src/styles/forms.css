@@ -7,10 +7,18 @@
     @apply block text-sm font-semibold text-slate-300 mb-2 mt-1 tracking-wide;
   }
 
+  .form-label-sm {
+    @apply text-xs font-bold text-gray-500 uppercase;
+  }
+
   .form-input {
     @apply w-full px-4 py-3 rounded-xl bg-slate-900/50 border border-slate-700 
            text-white placeholder:text-slate-500 outline-none transition-all duration-200 
            focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:bg-slate-900;
+  }
+
+  .form-input-dark {
+    @apply !bg-gray-800/50 !border-gray-700 !text-white placeholder:!text-gray-600 focus:!ring-blue-500/20;
   }
 
   .form-button-primary {
@@ -120,6 +128,10 @@
 
   .field-hint {
     @apply text-xs text-slate-500;
+  }
+
+  .field-hint-warning {
+    @apply text-[10px] text-orange-400/80 flex items-center gap-1;
   }
 
   .form-actions {

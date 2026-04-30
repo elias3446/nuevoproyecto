@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 export interface MasterDetailConfig<T> {
   entityName: string;
   searchPlaceholder?: string;
+  filterFn?: (item: T, term: string) => boolean;
   list: {
     getKey: (item: T) => string | number;
     renderItem: (item: T, isActive: boolean) => React.ReactNode;
@@ -71,6 +72,12 @@ export function MasterDetailManager<T>({
   
   const totalPages = Math.ceil(totalCount / pageSize);
 
+  // Apply filterFn if provided, otherwise show all data
+  const filteredData = useMemo(() => {
+    if (!config.filterFn || !searchTerm) return data;
+    return data.filter(item => config.filterFn!(item, searchTerm));
+  }, [data, searchTerm, config.filterFn]);
+
   // Helper de paginación idéntico a DataTable.tsx
   const pageRange = useMemo(() => {
     if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -85,9 +92,9 @@ export function MasterDetailManager<T>({
   }, [page, totalPages]);
 
   return (
-    <div className={cn("grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-in fade-in slide-in-from-bottom-4 duration-700", className)}>
-      {/* Master Sidebar */}
-      <Card className="lg:col-span-4 bg-gray-900/40 border-gray-800 backdrop-blur-xl flex flex-col h-[750px]">
+    <div className={cn("grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch animate-in fade-in slide-in-from-bottom-4 duration-700", className)}>
+      {/* Master Sidebar - sticky con scroll interno */}
+      <Card className="lg:col-span-4 bg-gray-900/40 border-gray-800 backdrop-blur-xl flex flex-col sticky top-0" style={{height: 'calc(100vh - 160px)'}}>
         <CardHeader className="pb-4 shrink-0">
           <div className="flex items-center justify-between mb-4">
             <CardTitle className="text-xl text-white">{config.entityName}s</CardTitle>
@@ -109,19 +116,19 @@ export function MasterDetailManager<T>({
             />
           </div>
         </CardHeader>
-        <CardContent className="space-y-4 flex-1 flex flex-col min-h-0">
-          <ScrollArea className="flex-1 pr-4">
+        <CardContent className="space-y-4 flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="flex-1 overflow-y-auto pr-2 min-h-0" style={{maxHeight: 'calc(100vh - 340px)'}}>
             <div className="space-y-2">
               {isLoading && page === 1 ? (
                 <div className="flex items-center justify-center py-10">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
                 </div>
-              ) : data.length === 0 ? (
+              ) : filteredData.length === 0 ? (
                 <div className="text-center py-10 text-gray-500 text-sm">
                   No se encontraron {config.entityName.toLowerCase()}s.
                 </div>
               ) : (
-                data.map(item => {
+                filteredData.map(item => {
                   const key = config.list.getKey(item);
                   const isActive = selectedItem && config.list.getKey(selectedItem as T) === key;
                   return (
@@ -146,7 +153,7 @@ export function MasterDetailManager<T>({
                 })
               )}
             </div>
-          </ScrollArea>
+          </div>
 
           {/* Paginación */}
           {totalPages > 1 && (
@@ -195,10 +202,10 @@ export function MasterDetailManager<T>({
       </Card>
 
       {/* Detail Editor Area */}
-      <div className="lg:col-span-8 h-full">
+      <div className="lg:col-span-8 flex flex-col" style={{height: 'calc(100vh - 160px)'}}>
         {selectedItem ? (
-          <div className="animate-in fade-in slide-in-from-right-4 duration-500 h-full">
-            <Card className="bg-gray-900 border-gray-800 overflow-hidden flex flex-col h-[750px]">
+          <div className="animate-in fade-in slide-in-from-right-4 duration-500 flex-1 min-h-0">
+            <Card className="bg-gray-900 border-gray-800 overflow-hidden flex flex-col h-full">
               <CardHeader className="shrink-0 bg-gradient-to-r from-gray-800/50 to-transparent border-b border-gray-800">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
@@ -234,16 +241,16 @@ export function MasterDetailManager<T>({
             </Card>
           </div>
         ) : (
-          <div className="h-full w-full">
+          <>
             {emptyState || (
-              <div className="h-full w-full flex items-center justify-center border-2 border-dashed border-gray-800 rounded-3xl p-12 text-center group hover:border-gray-700 transition-colors">
-                <div className="space-y-4 max-w-sm">
-                  <div className="p-6 bg-gray-900 rounded-full w-fit mx-auto ring-4 ring-gray-800/50 group-hover:ring-blue-500/10 transition-all">
-                    <Plus className="h-12 w-12 text-gray-700 group-hover:text-blue-500/50 transition-colors" />
+              <div className="empty-state-wrapper w-full" style={{height: 'calc(100vh - 160px)', minHeight: 'unset'}}>
+                <div className="empty-state-content mx-auto">
+                  <div className="empty-state-icon">
+                    <Plus />
                   </div>
                   <div className="space-y-2">
-                    <h3 className="text-xl font-bold text-gray-400">Gestión de {config.entityName}s</h3>
-                    <p className="text-sm text-gray-600">
+                    <h3 className="empty-state-title">Gestión de {config.entityName}s</h3>
+                    <p className="empty-state-desc">
                       Selecciona un {config.entityName.toLowerCase()} de la lista izquierda para editarlo o crea uno nuevo.
                     </p>
                   </div>
@@ -257,7 +264,7 @@ export function MasterDetailManager<T>({
                 </div>
               </div>
             )}
-          </div>
+          </>
         )}
       </div>
     </div>

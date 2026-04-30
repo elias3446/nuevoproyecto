@@ -45,11 +45,23 @@
   }
 
   .security-container {
-    @apply max-w-4xl mx-auto;
+    @apply p-4 md:p-8 space-y-8 max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700;
+  }
+
+  .security-header {
+    @apply flex flex-col md:flex-row md:items-end justify-between gap-4;
   }
 
   .security-title {
-    @apply text-2xl font-bold text-white mb-6;
+    @apply text-4xl font-extrabold text-white tracking-tight flex items-center gap-3;
+  }
+
+  .security-subtitle {
+    @apply text-gray-400 text-lg;
+  }
+
+  .security-icon-wrapper {
+    @apply p-2 bg-blue-600/20 rounded-lg text-blue-500;
   }
 
   .session-card {
@@ -124,13 +136,56 @@
     @apply text-lg font-semibold text-white;
   }
 
+  .loading-container {
+    @apply flex flex-col items-center justify-center p-8 gap-4;
+  }
+
   .loading-spinner {
     @apply animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500;
+  }
+
+  .loading-text {
+    @apply animate-pulse text-blue-500 font-medium;
   }
 
   .empty-message {
     @apply text-gray-400;
   }
+
+  /* ─── Empty States ───────────────────────────────────────────────────────── */
+  .empty-state-wrapper {
+    @apply h-full min-h-[640px] flex items-center justify-center border-2 border-dashed border-gray-800 rounded-3xl p-12 text-center hover:border-gray-700 transition-colors;
+  }
+
+  .empty-state-content {
+    @apply space-y-4 max-w-sm;
+  }
+
+  .empty-state-icon {
+    @apply p-6 bg-gray-900 rounded-full w-fit mx-auto ring-4 ring-gray-800/50 transition-all;
+  }
+
+  .empty-state-icon > svg {
+    @apply h-12 w-12 text-gray-700 transition-colors;
+  }
+
+  .empty-state-wrapper:hover .empty-state-icon {
+    @apply ring-blue-500/10;
+  }
+
+  .empty-state-wrapper:hover .empty-state-icon > svg {
+    @apply text-blue-500/50;
+  }
+
+  .empty-state-title {
+    @apply text-xl font-bold text-gray-400;
+  }
+
+  .empty-state-desc {
+    @apply text-sm text-gray-600;
+  }
+
+  /* ─── Security / Permissions ──────────────────────────────────────────────────────── */
 
   .session-actions {
     @apply flex gap-2;
@@ -161,16 +216,127 @@
   }
 
   .security-tabs {
-    @apply flex gap-4 mb-6 border-b border-gray-700;
+    @apply flex bg-gray-900/50 p-1 rounded-xl border border-gray-800 gap-1 w-fit;
   }
 
   .security-tab {
-    @apply px-4 py-2 text-gray-400 hover:text-white transition-colors 
-           border-b-2 border-transparent -mb-px;
+    @apply flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all text-gray-400 hover:text-white hover:bg-gray-800;
   }
 
   .security-tab.active {
-    @apply text-blue-500 border-blue-500;
+    @apply bg-blue-600 text-white shadow-lg shadow-blue-900/20 hover:bg-blue-600;
+  }
+
+  /* ─── List Items & Sections ──────────────────────────────────────────────────────── */
+  
+  .list-item-content {
+    @apply space-y-1;
+  }
+
+  .list-item-header {
+    @apply flex items-center gap-2;
+  }
+
+  .list-item-title {
+    @apply font-semibold text-gray-200;
+  }
+
+  .list-item-title.active {
+    @apply text-blue-400;
+  }
+
+  .list-item-desc {
+    @apply text-xs text-gray-500 line-clamp-1;
+  }
+
+  .badge-system {
+    @apply text-[9px] h-4 border-gray-700 bg-gray-800/50 text-gray-400;
+  }
+
+  .section-header {
+    @apply flex items-center justify-between mb-4;
+  }
+
+  .section-title {
+    @apply text-lg font-bold text-white flex items-center gap-2;
+  }
+
+  .tooltip-icon {
+    @apply h-4 w-4 text-gray-500;
+  }
+
+  .tooltip-content-dark {
+    @apply bg-gray-800 border-gray-700 text-gray-200;
+  }
+
+  /* ─── Permission Cards ──────────────────────────────────────────────────────── */
+  
+  .permission-category-card {
+    @apply space-y-0 p-4 rounded-xl bg-gray-800/20 border border-gray-800/50 transition-all duration-300;
+  }
+
+  .permission-category-header {
+    @apply flex items-center justify-between cursor-pointer;
+  }
+
+  .permission-category-title-wrapper {
+    @apply flex items-center gap-2;
+  }
+
+  .permission-category-dot {
+    @apply w-1.5 h-1.5 rounded-full bg-blue-500;
+  }
+
+  .permission-category-title {
+    @apply text-sm font-black text-gray-300 uppercase tracking-tighter transition-colors;
+  }
+
+  .permission-category-header:hover .permission-category-title {
+    @apply text-blue-400;
+  }
+
+  .permission-category-actions {
+    @apply flex items-center gap-4;
+  }
+
+  .permission-btn-ghost {
+    @apply text-[10px] h-6 text-gray-500 hover:text-blue-400;
+  }
+
+  .permission-chevron {
+    @apply h-4 w-4 text-gray-500 transition-transform duration-300;
+  }
+
+  .permission-item-card {
+    @apply flex items-center justify-between p-3 rounded-lg transition-all border;
+  }
+
+  .permission-item-enabled {
+    @apply bg-blue-600/5 border-blue-500/20;
+  }
+
+  .permission-item-disabled {
+    @apply bg-transparent border-gray-800/50 opacity-60;
+  }
+
+  .permission-item-content {
+    @apply flex-1 space-y-0.5;
+  }
+
+  .permission-item-header {
+    @apply flex items-center gap-2;
+  }
+
+  .permission-item-title {
+    @apply text-xs font-medium text-gray-200;
+  }
+
+  .permission-item-desc {
+    @apply text-[10px] text-gray-500 font-mono tracking-tight;
+  }
+
+  .permission-lock-icon {
+    @apply h-3 w-3 text-orange-400/50;
   }
 
   .password-change-container {

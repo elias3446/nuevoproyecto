@@ -10,7 +10,7 @@ export const MODULE_REGISTRY: Record<string, RegisteredModule> = {
   
   'profile': lazy(() => import('@/components/user/ProfileModule')),
   
-  'security': lazy(() => import('@/components/security/RoleManagementModule')),
+  'security': lazy(() => import('@/pages/Security')),
   'settings': lazy(() => import('@/pages/Security')),
 };
 

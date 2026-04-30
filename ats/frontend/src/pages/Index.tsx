@@ -43,24 +43,27 @@ const Index = () => {
   const handleNavigationClick = (id: string) => {
     const target = uiConfig?.menu.find(m => m.id === id);
     if (target) {
-        navigate(target.route);
+      navigate(target.route);
     } else {
-        navigate(`/dashboard/${id}`);
+      navigate(`/dashboard/${id}`);
     }
     setIsMobileMenuOpen(false);
   };
 
   if (configLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <div className="animate-pulse text-blue-500 font-medium">Cargando interfaz dinámica...</div>
-    </div>;
+    return (
+      <div className="page-container loading-container">
+        <div className="loading-spinner"></div>
+        <div className="loading-text">Cargando interfaz ...</div>
+      </div>
+    );
   }
 
   return (
     <div className="index-page">
       {/* Sidebar - visible solo en desktop (lg) */}
       <div className="sidebar-desktop">
-        <Sidebar 
+        <Sidebar
           isSidebarOpen={isSidebarOpen}
           toggleSidebar={toggleSidebar}
           activePage={activePage}
@@ -71,11 +74,11 @@ const Index = () => {
           user={user}
         />
       </div>
-      
+
       {/* Contenedor Derecho: Menú Horizontal arriba y Contenido abajo */}
       <div className="index-content">
         {/* Menú Horizontal Superior */}
-        <TopNav 
+        <TopNav
           activePage={activePage}
           setActivePage={handleNavigationClick}
           navigation={topNavNavigation}
@@ -84,22 +87,22 @@ const Index = () => {
           toggleMobileMenu={toggleMobileMenu}
           toggleSidebar={toggleSidebar}
           sidebar={
-              <Sidebar 
-                  isSidebarOpen={true}
-                  toggleSidebar={toggleMobileMenu}
-                  activePage={activePage}
-                  setActivePage={handleNavigationClick}
-                  navigation={sidebarNavigation}
-                  handleLogout={() => {
-                    handleLogout();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  useFullHeight={true}
-                  user={user}
-                />
+            <Sidebar
+              isSidebarOpen={true}
+              toggleSidebar={toggleMobileMenu}
+              activePage={activePage}
+              setActivePage={handleNavigationClick}
+              navigation={sidebarNavigation}
+              handleLogout={() => {
+                handleLogout();
+                setIsMobileMenuOpen(false);
+              }}
+              useFullHeight={true}
+              user={user}
+            />
           }
         />
-        
+
         {/* Contenido Principal */}
         <ContentPanel activePage={activePage} />
       </div>
