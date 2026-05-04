@@ -24,13 +24,13 @@ docker-compose up -d --build
 ### Opción B: Levantar SOLO PRODUCCIÓN 🚀
 Levanta los servicios optimizados, compilados y servidos por Nginx con HTTPS para ambos mundos.
 ```bash
-docker-compose up -d --build db redis backend nginx frontend portal-nginx portal-frontend celery-worker celery-beat smtp
+docker-compose up -d --build db redis backend nginx frontend portal-nginx portal-frontend celery-worker celery-beat
 ```
 
 ### Opción C: Levantar SOLO DESARROLLO 💻
 Levanta las bases de datos y los servidores con Hot-Reload (Vite en puerto 3000 y 8080).
 ```bash
-docker-compose up -d --build db redis backend frontend-dev portal-frontend-dev celery-worker celery-beat smtp
+docker-compose up -d --build db redis backend frontend-dev portal-frontend-dev celery-worker celery-beat
 ```
 
 ---
@@ -41,11 +41,10 @@ docker-compose up -d --build db redis backend frontend-dev portal-frontend-dev c
 | :--- | :--- | :--- | :--- |
 | **ATS Admin/API** | [https://localhost](https://localhost) | ATS | Producción |
 | **ATS RRHH** | [http://localhost:3000](http://localhost:3000) | ATS | Desarrollo |
-| **Webmail (Roundcube)** | [https://localhost/webmail/](https://localhost/webmail/) | ATS | Producción |
 | **Portal Candidatos** | [https://localhost:444](https://localhost:444) | portaPublico | Producción |
 | **Portal Candidatos** | [http://localhost:8080](http://localhost:8080) | portaPublico | Desarrollo |
 
-> **Nota sobre el Servidor de Correo (SMTP / Webmail)**: El ecosistema levanta automáticamente un servidor de mensajería interna (Postfix/Roundcube). Sin embargo, para enviar **notificaciones al exterior** (como correos de registro a candidatos), se recomienda usar una cuenta real de Gmail configurada en `ats/.env`. [Revisa las instrucciones detalladas en ats/README.md](ats/README.md#4-correo-y-webmail) para saber cómo generar tu contraseña de aplicación o los requisitos para tener un SMTP propio público.
+> **Nota sobre el Envío de Correo (SMTP)**: El sistema está configurado para enviar notificaciones (como correos de registro o recuperación de contraseña) directamente a través de un proveedor externo (recomendado Google/Gmail). [Revisa las instrucciones detalladas en ats/README.md](ats/README.md#4-correo-y-notificaciones) para configurar tu cuenta y contraseña de aplicación.
 
 
 ---
