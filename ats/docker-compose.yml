@@ -77,6 +77,7 @@ services:
         VITE_PUBLIC_PORTAL_URL_DEV: ${VITE_PUBLIC_PORTAL_URL_DEV}
         VITE_PUBLIC_PORTAL_URL_PROD: ${VITE_PUBLIC_PORTAL_URL_PROD}
     container_name: ${ATS_PROJECT_NAME}_frontend
+    restart: unless-stopped
     volumes:
       - frontend_assets:/app/dist_shared
     command: sh -c "rm -rf /app/dist_shared/* && cp -r /app/dist/* /app/dist_shared/ && echo 'Assets synchronized' && sleep 2147483647"
@@ -213,18 +214,6 @@ services:
         condition: service_healthy
     command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
 
-  # ─── SMTP & Webmail ─────────────────────────────────────────────────────
-  smtp:
-    build:
-      context: ./smtp
-      dockerfile: Dockerfile
-    container_name: ${ATS_PROJECT_NAME}_smtp
-    restart: unless-stopped
-    env_file:
-      - .env
-    ports:
-      - "${SMTP_PORT}:25"
-      - "${IMAP_PORT}:143"
 
 volumes:
   postgres_data:

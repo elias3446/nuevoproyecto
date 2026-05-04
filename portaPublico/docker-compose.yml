@@ -24,6 +24,7 @@ services:
       dockerfile: Dockerfile
       target: production
     container_name: ${PORTAL_PROJECT_NAME}_frontend
+    restart: unless-stopped
     volumes:
       - portal_frontend_assets:/app/dist_shared
     command: sh -c "rm -rf /app/dist_shared/* && cp -r /app/dist/* /app/dist_shared/ && echo 'Assets synchronized' && sleep 2147483647"
