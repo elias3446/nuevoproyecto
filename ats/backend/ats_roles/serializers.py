@@ -1,15 +1,21 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Permission, Role, RolePermission, UserRole, UserResourcePermission
+from .models import Permission, Role, RolePermission, UserRole, UserResourcePermission, Module
 from .services import PermissionService
 
 User = get_user_model()
 
+class ModuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Module
+        fields = ['id', 'name', 'label', 'icon', 'route', 'order', 'is_active']
+
+
 class PermissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Permission
-        fields = ['id', 'action', 'description', 'category']
-        read_only_fields = ['id', 'action', 'category']
+        fields = ['id', 'action', 'description', 'category', 'module']
+        read_only_fields = ['id']
 
 
 class RolePermissionSerializer(serializers.ModelSerializer):

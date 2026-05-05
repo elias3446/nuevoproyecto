@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
-from ats_roles.models import Permission, Role, RolePermission, PermissionAction, PermissionCategory
+from ats_roles.models import Permission, Role, RolePermission, PermissionAction, PermissionCategory, Module
+from ats_roles.ui_config import UI_MENU_STRUCTURE
 import uuid
 
 class Command(BaseCommand):
@@ -18,7 +19,6 @@ class Command(BaseCommand):
             if category == 'candidates': category = PermissionCategory.CANDIDATES
             elif category == 'jobs': category = PermissionCategory.JOBS
             elif category == 'users': category = PermissionCategory.USERS
-            # ... se pueden añadir más mapeos si es necesario
             
             Permission.objects.update_or_create(
                 action=action_value,
@@ -29,6 +29,38 @@ class Command(BaseCommand):
             )
 
         self.stdout.write(self.style.SUCCESS('Permisos sincronizados correctamente.'))
+
+        # 1.1 Crear Módulos desde UI_MENU_STRUCTURE
+        self.stdout.write('Sincronizando módulos...')
+        for index, item in enumerate(UI_MENU_STRUCTURE):
+            module, created = Module.objects.update_or_create(
+                name=item['id'],
+                defaults={
+                    'label': item['label'],
+                    'icon': item['icon'],
+                    'route': item['route'],
+                    'order': index,
+                    'is_active': True
+                }
+            )
+            
+            # Vincular permisos de la categoría al módulo
+            # Buscamos permisos que coincidan con la lógica del módulo
+            # Ej: Módulo "vacantes" -> Permisos con categoría "jobs"
+            cat_map = {
+                "vacantes": "jobs",
+                "candidatos": "candidates",
+                "cv-espontaneos": "candidates",
+                "formularios": "forms",
+                "analytics": "analytics",
+                "security": "users"
+            }
+            
+            target_cat = cat_map.get(module.name)
+            if target_cat:
+                Permission.objects.filter(category=target_cat).update(module=module)
+
+        self.stdout.write(self.style.SUCCESS('Módulos sincronizados correctamente.'))
 
         # 2. Crear Roles Estándar
         roles_data = [

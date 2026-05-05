@@ -1,8 +1,8 @@
 from rest_framework import viewsets, generics, status, permissions
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from .models import Permission, Role, UserRole
-from .serializers import PermissionSerializer, RoleSerializer, UserRoleSerializer
+from .models import Permission, Role, UserRole, Module
+from .serializers import PermissionSerializer, RoleSerializer, UserRoleSerializer, ModuleSerializer
 from .permissions import HasPermission
 from .ui_config import UI_MENU_STRUCTURE
 from audit.models import AuditLog, AuditAction
@@ -17,25 +17,57 @@ class UIConfigView(APIView):
         user_permissions = PermissionService.get_user_permissions(request.user)
         is_admin = request.user.is_superuser or request.user.user_roles.filter(role__name__in=['Administrador', 'Superadministrador']).exists()
         
+        # Obtener módulos activos desde la DB
+        modules = Module.objects.filter(is_active=True).prefetch_related('permissions')
+        
         filtered_menu = []
-        for item in UI_MENU_STRUCTURE:
-            req_perm = item.get('required_permission')
+        for mod in modules:
+            # Un módulo se muestra si no tiene permiso requerido, 
+            # si el usuario es admin, o si tiene el permiso asociado.
+            # Nota: Usamos el primer permiso del módulo como "permiso de acceso" 
+            # o podrías añadir un campo required_permission al modelo Module.
+            # Por ahora, si el módulo tiene permisos asociados, pedimos el primero de tipo 'read'
+            
+            read_perm = mod.permissions.filter(action__contains=':read').first()
+            req_perm = read_perm.action if read_perm else None
+            
             if not req_perm or is_admin or req_perm in user_permissions:
-                filtered_menu.append(item)
+                filtered_menu.append({
+                    "id": mod.name,
+                    "label": mod.label,
+                    "icon": mod.icon,
+                    "route": mod.route,
+                    "required_permission": req_perm
+                })
         
         return Response({
             "menu": filtered_menu,
             "theme_config": {
-                "primary_color": "#3b82f6", # Ejemplo de config por tenant futura
+                "primary_color": "#3b82f6",
                 "company_name": "ATS Platform"
             }
         })
 
-class PermissionListView(generics.ListAPIView):
+
+class ModuleViewSet(viewsets.ModelViewSet):
+    queryset = Module.objects.all().order_by('order')
+    serializer_class = ModuleSerializer
+    
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.IsAuthenticated()]
+        return [HasPermission('user:manage_roles')()]
+
+
+class PermissionViewSet(viewsets.ModelViewSet):
     queryset = Permission.objects.all().order_by('category', 'action')
     serializer_class = PermissionSerializer
-    permission_classes = [permissions.IsAuthenticated] # Solo lectura para autenticados
     pagination_class = None
+    
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.IsAuthenticated()]
+        return [HasPermission('user:manage_roles')()]
 
 
 class RoleViewSet(viewsets.ModelViewSet):

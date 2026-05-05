@@ -61,6 +61,26 @@ class ResourceType(models.TextChoices):
     DEPARTMENT = 'department', 'Departamento'
 
 
+class Module(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=50, unique=True, help_text="ID interno del módulo (ej: dashboard)")
+    label = models.CharField(max_length=100, help_text="Nombre visible en el menú")
+    icon = models.CharField(max_length=50, blank=True, help_text="Nombre del icono (ej: Briefcase)")
+    route = models.CharField(max_length=100, blank=True, help_text="Ruta de navegación (ej: /dashboard/vacantes)")
+    order = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'modules'
+        verbose_name = 'Módulo'
+        verbose_name_plural = 'Módulos'
+        ordering = ['order']
+
+    def __str__(self):
+        return self.label
+
+
 class Permission(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     action = models.CharField(
@@ -73,6 +93,13 @@ class Permission(models.Model):
         max_length=50,
         blank=True,
         help_text="Categoría lógica (ej: jobs, users)"
+    )
+    module = models.ForeignKey(
+        Module,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='permissions'
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
