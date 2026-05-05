@@ -10,7 +10,9 @@ interface DynamicEntityManagerProps {
 }
 
 export const DynamicEntityManager: React.FC<DynamicEntityManagerProps> = ({ entityId }) => {
-  const { schema, data, isLoading, saveData, isSaving } = useDynamicEntities(entityId);
+  const [page, setPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const { schema, data, totalCount, isLoading, saveData, isSaving } = useDynamicEntities(entityId, page);
   const [editingRecord, setEditingRecord] = useState<Partial<DynamicData> | null>(null);
 
   if (isLoading || !schema) return <div className="p-8 text-center text-gray-500">Cargando datos...</div>;
@@ -130,13 +132,13 @@ export const DynamicEntityManager: React.FC<DynamicEntityManagerProps> = ({ enti
     <div className="h-full">
       <MasterDetailManager<DynamicData>
         data={data}
-        totalCount={data.length}
-        page={1}
-        setPage={() => {}}
+        totalCount={totalCount}
+        page={page}
+        setPage={setPage}
         isLoading={isLoading}
         isSaving={isSaving}
-        searchTerm=""
-        onSearchChange={() => {}}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
         selectedItem={editingRecord}
         onSelectItem={setEditingRecord}
         onAddNew={() => setEditingRecord({ data: {} })}

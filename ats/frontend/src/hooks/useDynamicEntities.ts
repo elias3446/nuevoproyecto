@@ -31,7 +31,7 @@ export interface DynamicData {
   updated_at: string;
 }
 
-export const useDynamicEntities = (entityId?: string) => {
+export const useDynamicEntities = (entityId?: string, page: number = 1) => {
   const queryClient = useQueryClient();
 
   // Obtener definición de esquema por ID de entidad o por ID de módulo
@@ -45,12 +45,23 @@ export const useDynamicEntities = (entityId?: string) => {
     enabled: !!entityId
   });
 
-  // Obtener datos de la entidad
-  const dataQuery = useQuery<DynamicData[]>({
-    queryKey: ['dynamic-data', entityId],
+  // Obtener datos de la entidad paginados
+  const dataQuery = useQuery<{results: DynamicData[], count: number}>({
+    queryKey: ['dynamic-data', entityId, page],
     queryFn: async () => {
-      const response = await api.get(`/dynamic/data/?entity_id=${entityId}`);
-      return Array.isArray(response.data) ? response.data : response.data.results || [];
+      try {
+        const response = await api.get(`/dynamic/data/?entity_id=${entityId}&page=${page}`);
+        return {
+          results: Array.isArray(response.data) ? response.data : response.data.results || [],
+          count: response.data.count || (Array.isArray(response.data) ? response.data.length : 0)
+        };
+      } catch (error: any) {
+        if (error.response && error.response.status === 404) {
+          // DRF lanza 404 si la página no existe (Invalid page)
+          return { results: [], count: 0 };
+        }
+        throw error;
+      }
     },
     enabled: !!entityId
   });
@@ -96,7 +107,8 @@ export const useDynamicEntities = (entityId?: string) => {
 
   return {
     schema: schemaQuery.data,
-    data: dataQuery.data || [],
+    data: dataQuery.data?.results || [],
+    totalCount: dataQuery.data?.count || 0,
     isLoading: schemaQuery.isLoading || dataQuery.isLoading,
     saveSchema: saveSchemaMutation.mutateAsync,
     syncFields: syncFieldsMutation.mutateAsync,
