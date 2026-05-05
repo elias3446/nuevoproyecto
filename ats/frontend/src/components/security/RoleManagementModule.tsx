@@ -153,6 +153,7 @@ const RoleManagementModule: React.FC = () => {
     },
     editor: {
       title: (m) => m?.id ? 'Editar Módulo' : 'Nuevo Módulo',
+      description: () => 'Configura la apariencia y ruta de navegación del módulo.',
       onSave: async () => { await saveModule(editingModule!); setEditingModule(null); },
       onCancel: () => setEditingModule(null),
       renderFields: (m) => (
@@ -193,6 +194,7 @@ const RoleManagementModule: React.FC = () => {
     },
     editor: {
       title: (p) => p?.id ? 'Editar Permiso' : 'Nuevo Permiso',
+      description: () => 'Define acciones atómicas para el control de acceso granular.',
       onSave: async () => { await savePermission(editingPermission!); setEditingPermission(null); },
       onCancel: () => setEditingPermission(null),
       renderFields: (p) => (
