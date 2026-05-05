@@ -3,7 +3,7 @@ import { useSessions } from "@/hooks/auth/useSessions";
 import { SessionsList } from "@/components/security/SessionsList";
 import { PasswordChangeForm } from "@/components/security/PasswordChangeForm";
 import { ExportManager } from "@/components/security/ExportManager";
-import RoleManagementModule from "@/components/security/RoleManagementModule";
+import AccessControlModule from "@/components/security/AccessControlModule";
 import { Shield, Key, Monitor, FileBarChart } from "lucide-react";
 
 const Security = () => {
@@ -56,7 +56,7 @@ const Security = () => {
         <div className="flex-1 pb-6">
           {activeTab === 'roles' && (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-              <RoleManagementModule />
+              <AccessControlModule />
             </div>
           )}
 

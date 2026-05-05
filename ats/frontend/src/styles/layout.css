@@ -250,7 +250,7 @@
   }
 
   .badge-system {
-    @apply text-[9px] h-4 border-gray-700 bg-gray-800/50 text-gray-400;
+    @apply text-[9px] h-4 border-blue-500/50 bg-blue-500/10 text-blue-400 px-1 font-bold;
   }
 
   .section-header {

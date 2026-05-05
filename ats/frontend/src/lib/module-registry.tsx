@@ -14,9 +14,11 @@ export const MODULE_REGISTRY: Record<string, RegisteredModule> = {
   'settings': lazy(() => import('@/pages/Security')),
 };
 
+const DynamicPage = lazy(() => import('@/pages/DynamicPage'));
+
 /**
  * Función para obtener un módulo del registro con un fallback
  */
 export const getModule = (moduleId: string): RegisteredModule => {
-  return MODULE_REGISTRY[moduleId] || MODULE_REGISTRY['dashboard'];
+  return MODULE_REGISTRY[moduleId] || DynamicPage;
 };

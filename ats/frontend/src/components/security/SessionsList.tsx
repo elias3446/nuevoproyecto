@@ -19,30 +19,34 @@ export const SessionsList = ({
   onRefresh,
 }: SessionsListProps) => {
   const [showConfirm, setShowConfirm] = useState(false);
-  const [localSessions, setLocalSessions] = useState<UserSession[]>(sessions);
+  const [localSessions, setLocalSessions] = useState<UserSession[]>([]);
+  const [revokingIds, setRevokingIds] = useState<number[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
 
   useEffect(() => {
-    setLocalSessions(sessions);
+    // Filtrar sesiones que sabemos que estamos revocando para evitar que reaparezcan por lag de caché
+    const filtered = sessions.filter(s => !revokingIds.includes(s.id));
+    setLocalSessions(filtered);
+    
     const current = sessions.find(s => s.is_current);
     if (current) setCurrentSessionId(current.id);
-  }, [sessions]);
+  }, [sessions, revokingIds]);
 
   const handleRevokeSession = async (sessionId: number) => {
-    // Optimistic update: remover inmediatamente
-    setLocalSessions(prev => prev.filter(s => s.id !== sessionId));
+    // Registrar que estamos revocando esta sesión para ignorar actualizaciones de caché
+    setRevokingIds(prev => [...prev, sessionId]);
     
     const success = await onRevokeSession(sessionId);
     if (success) {
-      toast.success("Sesión cerrada");
-      // Si es la sesión actual, redirigir al login
+      toast.success("Sesion cerrada");
       if (sessionId === currentSessionId) {
         window.location.href = "/login";
       }
     } else {
-      // Revertir optimistic update si falla
+      // Si falla, remover del filtro para que vuelva a aparecer
+      setRevokingIds(prev => prev.filter(id => id !== sessionId));
       onRefresh();
-      toast.error("Error al cerrar sesión");
+      toast.error("Error al cerrar sesion");
     }
   };
 

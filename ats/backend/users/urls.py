@@ -43,7 +43,7 @@ urlpatterns = [
     
     # Sessions endpoints
     path('sessions/', UserSessionsView.as_view(), name='user_sessions'),
-    path('sessions/<int:session_id>/', RevokeSessionView.as_view(), name='revoke_session'),
+    path('sessions/<str:session_id>/', RevokeSessionView.as_view(), name='revoke_session'),
     path('logout-all/', LogoutAllDevicesView.as_view(), name='logout_all_devices'),
     
     path('password/reset/', PasswordResetRequestView.as_view(), name='password_reset_request'),

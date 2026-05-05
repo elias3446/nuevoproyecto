@@ -1,4 +1,4 @@
-from rest_framework import viewsets, generics, status, permissions
+from rest_framework import viewsets, generics, status, permissions, filters
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from .models import Permission, Role, UserRole, Module
@@ -7,6 +7,7 @@ from .permissions import HasPermission
 from .ui_config import UI_MENU_STRUCTURE
 from audit.models import AuditLog, AuditAction
 from rest_framework.views import APIView
+from ats.mixins import CachedListMixin
 
 class UIConfigView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -49,31 +50,83 @@ class UIConfigView(APIView):
         })
 
 
-class ModuleViewSet(viewsets.ModelViewSet):
+class ModuleViewSet(CachedListMixin, viewsets.ModelViewSet):
     queryset = Module.objects.all().order_by('order')
     serializer_class = ModuleSerializer
-    pagination_class = None
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name', 'label', 'route']
     
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
             return [permissions.IsAuthenticated()]
         return [HasPermission('user:manage_roles')()]
 
+    def list(self, request, *args, **kwargs):
+        if request.query_params.get('all') == 'true':
+            self.pagination_class = None
+        return super().list(request, *args, **kwargs)
 
-class PermissionViewSet(viewsets.ModelViewSet):
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.is_system:
+            return Response(
+                {"error": "No se pueden eliminar módulos del sistema"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return super().destroy(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.is_system:
+            if 'name' in request.data and request.data['name'] != instance.name:
+                return Response(
+                    {"error": "No se puede cambiar el nombre de un módulo del sistema"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        return super().update(request, *args, **kwargs)
+
+
+class PermissionViewSet(CachedListMixin, viewsets.ModelViewSet):
     queryset = Permission.objects.all().order_by('category', 'action')
     serializer_class = PermissionSerializer
-    pagination_class = None
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['action', 'description', 'category']
     
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
             return [permissions.IsAuthenticated()]
         return [HasPermission('user:manage_roles')()]
 
+    def list(self, request, *args, **kwargs):
+        if request.query_params.get('all') == 'true':
+            self.pagination_class = None
+        return super().list(request, *args, **kwargs)
 
-class RoleViewSet(viewsets.ModelViewSet):
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.is_system:
+            return Response(
+                {"error": "No se pueden eliminar permisos del sistema"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return super().destroy(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.is_system:
+            if 'action' in request.data and request.data['action'] != instance.action:
+                return Response(
+                    {"error": "No se puede cambiar la acción de un permiso del sistema"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        return super().update(request, *args, **kwargs)
+
+
+class RoleViewSet(CachedListMixin, viewsets.ModelViewSet):
     queryset = Role.objects.all().order_by('name')
     serializer_class = RoleSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name', 'description']
     # La paginación está habilitada por defecto globalmente, 
     # pero aquí nos aseguramos de que no esté desactivada.
     
@@ -94,7 +147,8 @@ class RoleViewSet(viewsets.ModelViewSet):
         # Auditoría
         self._log_audit(role, AuditAction.UPDATE, old_values=old_values, new_values=serializer.data)
 
-    def perform_destroy(self, instance):
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
         if instance.is_system:
             return Response(
                 {"error": "No se pueden eliminar roles del sistema"}, 
@@ -103,9 +157,15 @@ class RoleViewSet(viewsets.ModelViewSet):
         
         old_values = RoleSerializer(instance).data
         role_id = instance.id
-        instance.delete()
-        # Auditoría
+        response = super().destroy(request, *args, **kwargs)
+        # Auditoría manual tras destrucción exitosa
         self._log_audit_manual(role_id, 'Role', AuditAction.DELETE, old_values=old_values)
+        return response
+
+    def perform_destroy(self, instance):
+        # Este ya no es el lugar principal de bloqueo, pero lo mantenemos por seguridad interna
+        if not instance.is_system:
+            instance.delete()
 
     def _log_audit(self, obj, action, old_values=None, new_values=None):
         AuditLog.objects.create(

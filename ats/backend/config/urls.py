@@ -26,6 +26,7 @@ urlpatterns = [
     path('api/roles/', include('ats_roles.urls')),
     path('api/tenants/', include('tenants.urls')),
     path('api/audit/', include('audit.urls')),
+    path('api/dynamic/', include('dynamic_entities.urls')),
 ]
 
 if settings.DEBUG:

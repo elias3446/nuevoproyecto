@@ -289,4 +289,20 @@ El equipo de ATS.
         return f"Email enviado a {user_email}"
     except Exception as e:
         logger.error(f"Error enviando email de recuperación a {user_email}: {str(e)}")
-        return f"Error: {str(e)}"
+        return f"Error: {str(e)}"
+
+
+@shared_task(name='notify_user_sessions_update_task')
+def notify_user_sessions_update_task(user_id: str):
+    """
+    Tarea para notificar vía WebSocket que la lista de sesiones ha cambiado.
+    """
+    from asgiref.sync import async_to_sync
+    from .notifications import notify_session_list_update
+    
+    try:
+        async_to_sync(notify_session_list_update)(user_id)
+        return f"Notificación de actualización enviada al usuario {user_id}"
+    except Exception as e:
+        logger.error(f"Error notificando actualización de sesiones: {str(e)}")
+        return f"Error: {str(e)}"

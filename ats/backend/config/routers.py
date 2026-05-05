@@ -17,6 +17,7 @@ class SchemaRouter:
         'audit':                 'audit_db',
         # Storage App
         'storage_app':           'common_db',
+        'dynamic_entities':      'roles_db',
     }
 
     def db_for_read(self, model, **hints):

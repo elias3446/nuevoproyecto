@@ -69,6 +69,7 @@ class Module(models.Model):
     route = models.CharField(max_length=100, blank=True, help_text="Ruta de navegación (ej: /dashboard/vacantes)")
     order = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
+    is_system = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -101,6 +102,7 @@ class Permission(models.Model):
         blank=True,
         related_name='permissions'
     )
+    is_system = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

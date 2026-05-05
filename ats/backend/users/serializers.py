@@ -21,10 +21,16 @@ class UserSerializer(serializers.ModelSerializer):
         return list(obj.user_roles.values_list('role__name', flat=True))
 
 class UserSessionSerializer(serializers.ModelSerializer):
+    is_current = serializers.SerializerMethodField()
+
     class Meta:
         model = UserSession
         fields = ('id', 'ip_address', 'device_info', 'country', 'city', 
                   'last_used', 'is_current', 'is_active')
+
+    def get_is_current(self, obj):
+        current_id = self.context.get('current_session_id')
+        return str(obj.id) == str(current_id) if current_id else False
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)

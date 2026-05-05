@@ -28,8 +28,21 @@ export const useSessions = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get("/sessions/");
-      setSessions(response.data.sessions || []);
+      // Añadimos un timestamp para evitar cache del navegador y asegurar datos frescos
+      const response = await api.get(`/sessions/?_t=${Date.now()}`);
+      const data = response.data;
+      
+      let finalSessions: UserSession[] = [];
+      
+      if (Array.isArray(data)) {
+        finalSessions = data;
+      } else if (data && typeof data === 'object') {
+        // Buscar en múltiples posibles llaves (compatibilidad total)
+        const possibleList = data.sessions || data.results || data;
+        finalSessions = Array.isArray(possibleList) ? possibleList : [];
+      }
+      
+      setSessions(finalSessions);
     } catch (err: any) {
       setError(err.response?.data?.error || "Error al cargar sesiones");
     } finally {
@@ -59,6 +72,26 @@ export const useSessions = () => {
 
   useEffect(() => {
     fetchSessions();
+
+    // Suscribirse a actualizaciones vía WebSocket
+    const handleRefresh = () => {
+      console.log("Refrescando sesiones por notificación remota...");
+      fetchSessions();
+    };
+
+    const socket = import("@/integrations/backend/socket").then(m => m.default);
+    
+    socket.then(s => {
+      s.on("session_list_refresh", handleRefresh);
+      s.on("session_revoked_update", handleRefresh);
+    });
+
+    return () => {
+      socket.then(s => {
+        s.off("session_list_refresh", handleRefresh);
+        s.off("session_revoked_update", handleRefresh);
+      });
+    };
   }, []);
 
   return {

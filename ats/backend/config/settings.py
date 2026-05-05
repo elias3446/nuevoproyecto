@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     # Storage App
     'storage_app',
     'tenants',
+    'dynamic_entities',
 ]
 
 MIDDLEWARE = [

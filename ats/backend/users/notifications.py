@@ -54,12 +54,24 @@ async def notify_session_revoked(session_id: int):
 async def notify_session_revoked_to_user(user_id: str, session_id: int):
     """
     Notifica a TODO el grupo de un usuario que una sesión ha sido revocada.
-    (Útil para actualizar listas en todos los dispositivos).
     """
     await publish_to_user(
         user_id=user_id,
         event_type="session_revoked_update",
         session_id=session_id,
+    )
+
+async def notify_session_list_update(user_id: str):
+    """
+    Notifica a TODO el grupo de un usuario que debe refrescar su lista de sesiones.
+    Se usa tanto para nuevos inicios de sesión como para cierres.
+    """
+    import asyncio
+    # Micro-delay para asegurar que Redis/DB esten listos antes de que el cliente pida la lista
+    await asyncio.sleep(0.1)
+    await publish_to_user(
+        user_id=user_id,
+        event_type="session_list_refresh",
     )
 
 

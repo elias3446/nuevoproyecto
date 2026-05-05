@@ -1,6 +1,7 @@
 from rest_framework import generics, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from ats.mixins import CachedListMixin
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.conf import settings
@@ -24,6 +25,7 @@ from .utils import (
     invalidate_all_user_tokens,
     get_active_sessions
 )
+from .models import UserSession
 from .redis_manager import RedisSessionManager
 from .notifications import (
     notify_session_revoked,
@@ -431,45 +433,45 @@ class CheckSetupView(APIView):
             return Response({"setup_needed": True, "error_info": str(e)}, status=status.HTTP_200_OK)
 
 
-class UserSessionsView(generics.ListAPIView):
+class UserSessionsView(CachedListMixin, generics.ListAPIView):
+    queryset = UserSession.objects.all()
     serializer_class = UserSessionSerializer
     permission_classes = (permissions.IsAuthenticated,)
+
+    pagination_class = None
 
     def get_queryset(self):
         return get_active_sessions(self.request.user)
 
+    def wrap_cached_response(self, data):
+        """Enuelve los datos en la llave 'sessions' que espera el frontend"""
+        return {"sessions": data}
+
     def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        data = serializer.data
-        
-        # Identificar dinámicamente la sesión actual usando el session_id del token
+        # Extraer session_id antes de que el Mixin genere la llave de cache
         auth_header = request.META.get('HTTP_AUTHORIZATION')
-        current_session_id = None
-        
         if auth_header and auth_header.startswith('Bearer '):
             try:
                 token_str = auth_header.split(' ')[1]
                 token = AccessToken(token_str)
-                current_session_id = token.get('session_id')
+                request.session_id = token.get('session_id')
             except Exception:
                 pass
         
-        # Marcar la sesión actual en los datos devueltos
-        for session_data in data:
-            if current_session_id and session_data['id'] == current_session_id:
-                session_data['is_current'] = True
-            else:
-                # Asegurarse de que las demás no estén marcadas como current
-                session_data['is_current'] = False
-                
-        return Response({"sessions": data})
+        return super().list(request, *args, **kwargs)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        # Pasar session_id al serializador si existe
+        context['current_session_id'] = getattr(self.request, 'session_id', None)
+        return context
 
 
 class RevokeSessionView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def delete(self, request, session_id):
+        logger.info(f"Intento de revocación de sesión ID: {session_id} por usuario: {request.user.email}")
         from asgiref.sync import async_to_sync
         from .models import UserSession
         try:
@@ -490,9 +492,14 @@ class RevokeSessionView(APIView):
             # 4. Notificar al resto de dispositivos para que actualicen la lista
             async_to_sync(notify_session_revoked_to_user)(str(request.user.id), session_id_val)
             
+            # 5. Invalidar caché de lista de sesiones
+            CachedListMixin.invalidate_cache('usersession')
+            
             return Response({"success": "Sesión cerrada"})
         except UserSession.DoesNotExist:
-            return Response({"error": "Sesión no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+            logger.info(f"Sesión {session_id} ya estaba inactiva o no existe. Usuario: {request.user.email}")
+            # Devolvemos éxito para que el frontend limpie su estado sin error
+            return Response({"success": "Sesión cerrada (ya estaba inactiva)"}, status=status.HTTP_200_OK)
 
 
 class LogoutAllDevicesView(APIView):
@@ -524,6 +531,9 @@ class LogoutAllDevicesView(APIView):
         
         # Notificar a todos los dispositivos via WebSocket
         async_to_sync(notify_all_user_sessions_revoked)(str(request.user.id))
+        
+        # Invalidar caché de lista de sesiones
+        CachedListMixin.invalidate_cache('usersession')
         
         response = Response({
             "success": "Todas las sesiones cerradas",

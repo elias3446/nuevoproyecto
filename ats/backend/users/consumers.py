@@ -18,7 +18,7 @@ class UserNotificationConsumer(AsyncWebsocketConsumer):
         self.user = None
         self.room_group_name = None
 
-        # Verificar autenticación
+        # Verificar autenticacion
         if self.scope["user"].is_authenticated:
             self.user = self.scope["user"]
             self.room_group_name = f"user_{self.user.id}"
@@ -29,7 +29,7 @@ class UserNotificationConsumer(AsyncWebsocketConsumer):
                 self.channel_name
             )
 
-            # Unirse al grupo de la sesión específica
+            # Unirse al grupo de la sesion especifica
             session_id = self.scope.get('session_id')
             if session_id:
                 self.session_group_name = f"session_{session_id}"
@@ -37,12 +37,12 @@ class UserNotificationConsumer(AsyncWebsocketConsumer):
                     self.session_group_name,
                     self.channel_name
                 )
-                logger.info(f"WebSocket unido a grupo de sesión: {self.session_group_name}")
+                logger.info(f"WebSocket unido a grupo de sesion: {self.session_group_name}")
 
             await self.accept()
             logger.info(f"WebSocket conectado: usuario {self.user.email}")
         else:
-            # Rechazar conexión no autenticada
+            # Rechazar conexion no autenticada
             await self.close()
 
     async def disconnect(self, close_code):
@@ -66,21 +66,21 @@ class UserNotificationConsumer(AsyncWebsocketConsumer):
                 data = json.loads(text_data)
                 logger.debug(f"Mensaje recibido: {data}")
             except json.JSONDecodeError:
-                logger.warning(f"Mensaje JSON inválido: {text_data}")
+                logger.warning(f"Mensaje JSON invalido: {text_data}")
 
     async def session_revoked(self, event):
-        """Evento: sesión revocada."""
+        """Evento: sesion revocada."""
         await self.send(text_data=json.dumps({
             "type": "session_revoked",
             "session_id": event.get("session_id"),
-            "message": "Tu sesión ha sido cerrada desde otro dispositivo",
+            "message": "Tu sesion ha sido cerrada desde otro dispositivo",
         }))
 
     async def token_expired(self, event):
         """Evento: token expirado."""
         await self.send(text_data=json.dumps({
             "type": "token_expired",
-            "message": "Tu sesión ha expirado",
+            "message": "Tu sesion ha expirado",
         }))
 
     async def force_logout(self, event):
@@ -88,4 +88,17 @@ class UserNotificationConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             "type": "force_logout",
             "message": event.get("message", "Has sido desconectado"),
+        }))
+
+    async def session_revoked_update(self, event):
+        """Evento de actualizacion de sesion"""
+        await self.send(text_data=json.dumps({
+            "type": "session_revoked_update",
+            "session_id": event.get("session_id"),
+        }))
+
+    async def session_list_refresh(self, event):
+        """Evento de refresco de lista"""
+        await self.send(text_data=json.dumps({
+            "type": "session_list_refresh",
         }))

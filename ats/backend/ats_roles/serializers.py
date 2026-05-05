@@ -8,14 +8,14 @@ User = get_user_model()
 class ModuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Module
-        fields = ['id', 'name', 'label', 'icon', 'route', 'order', 'is_active']
+        fields = ['id', 'name', 'label', 'icon', 'route', 'order', 'is_active', 'is_system']
 
 
 class PermissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Permission
-        fields = ['id', 'action', 'description', 'category', 'module']
-        read_only_fields = ['id']
+        fields = ['id', 'action', 'description', 'category', 'module', 'is_system']
+        read_only_fields = ['id', 'is_system']
 
 
 class RolePermissionSerializer(serializers.ModelSerializer):

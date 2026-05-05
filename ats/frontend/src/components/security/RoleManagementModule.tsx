@@ -1,20 +1,20 @@
 import React, { useState, useMemo } from 'react';
-import { useRoles, Role, Permission, Module } from '@/hooks/useRoles';
-import { Button } from '@/components/ui/button';
+import { useRoles, Role, Permission } from '@/hooks/useRoles';
 import { Badge } from '@/components/ui/badge';
 import { MasterDetailManager, MasterDetailConfig } from '@/components/ui/MasterDetailManager';
-import { ChevronRight, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { RoleForm } from '@/components/forms/RoleForm';
-import { Input } from '@/components/ui/input';
+
 const RoleManagementModule: React.FC = () => {
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
-  const { roles, totalCount, permissions, modules, loading, saveRole, isSaving, saveModule, savePermission } = useRoles(page);
-  const [activeTab, setActiveTab] = useState<'roles' | 'modules' | 'permissions'>('roles');
+  const { roles, rolesCount, permissions, modules, loading, saveRole, isSaving } = useRoles({ 
+    rolesPage: page,
+    rolesSearch: searchTerm,
+    modulesPage: 'all',
+    permsPage: 'all'
+  });
   const [editingRole, setEditingRole] = useState<Partial<Role> | null>(null);
-  const [editingModule, setEditingModule] = useState<Partial<Module> | null>(null);
-  const [editingPermission, setEditingPermission] = useState<Partial<Permission> | null>(null);
   const [initialPermissions, setInitialPermissions] = useState<string[]>([]);
   const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({});
 
@@ -98,8 +98,8 @@ const RoleManagementModule: React.FC = () => {
   // ─── Configuración del MasterDetailManager para Roles ────────────────────────
   const roleConfig: MasterDetailConfig<Role> = {
     entityName: 'Rol',
-    searchPlaceholder: 'Buscar rol...',
-    filterFn: (role, term) => role.name.toLowerCase().includes(term.toLowerCase()),
+    searchPlaceholder: 'Buscar rol por nombre o descripción...',
+    filterFn: (role, term) => true,
     list: {
       getKey: (role) => role.id,
       renderItem: (role, isActive) => (
@@ -138,167 +138,23 @@ const RoleManagementModule: React.FC = () => {
     }
   };
 
-  const moduleConfig: MasterDetailConfig<Module> = {
-    entityName: 'Módulo',
-    searchPlaceholder: 'Buscar módulo...',
-    filterFn: (m, term) => m.label.toLowerCase().includes(term.toLowerCase()),
-    list: {
-      getKey: (m) => m.id,
-      renderItem: (m) => (
-        <div className="list-item-content">
-          <span className="list-item-title">{m.label}</span>
-          <p className="list-item-desc">{m.route || 'Sin ruta'}</p>
-        </div>
-      ),
-    },
-    editor: {
-      title: (m) => m?.id ? 'Editar Módulo' : 'Nuevo Módulo',
-      description: () => 'Configura la apariencia y ruta de navegación del módulo.',
-      onSave: async () => { await saveModule(editingModule!); setEditingModule(null); },
-      onCancel: () => setEditingModule(null),
-      renderFields: (m) => (
-        <div className="space-y-4">
-          <div className="form-field">
-            <label className="form-label-sm">Etiqueta</label>
-            <Input value={m.label || ''} onChange={e => setEditingModule({...m, label: e.target.value})} className="form-input-dark" />
-          </div>
-          <div className="form-field">
-            <label className="form-label-sm">Nombre ID</label>
-            <Input value={m.name || ''} onChange={e => setEditingModule({...m, name: e.target.value})} className="form-input-dark" />
-          </div>
-          <div className="form-field">
-            <label className="form-label-sm">Icono (Lucide)</label>
-            <Input value={m.icon || ''} onChange={e => setEditingModule({...m, icon: e.target.value})} className="form-input-dark" />
-          </div>
-          <div className="form-field">
-            <label className="form-label-sm">Ruta</label>
-            <Input value={m.route || ''} onChange={e => setEditingModule({...m, route: e.target.value})} className="form-input-dark" />
-          </div>
-        </div>
-      )
-    }
-  };
-
-  const permConfig: MasterDetailConfig<Permission> = {
-    entityName: 'Permiso',
-    searchPlaceholder: 'Buscar permiso...',
-    filterFn: (p, term) => p.action.toLowerCase().includes(term.toLowerCase()),
-    list: {
-      getKey: (p) => p.id,
-      renderItem: (p) => (
-        <div className="list-item-content">
-          <span className="list-item-title">{p.description || p.action}</span>
-          <p className="list-item-desc">{p.action}</p>
-        </div>
-      ),
-    },
-    editor: {
-      title: (p) => p?.id ? 'Editar Permiso' : 'Nuevo Permiso',
-      description: () => 'Define acciones atómicas para el control de acceso granular.',
-      onSave: async () => { await savePermission(editingPermission!); setEditingPermission(null); },
-      onCancel: () => setEditingPermission(null),
-      renderFields: (p) => (
-        <div className="space-y-4">
-          <div className="form-field">
-            <label className="form-label-sm">Acción (slug:accion)</label>
-            <Input value={p.action || ''} onChange={e => setEditingPermission({...p, action: e.target.value})} className="form-input-dark" />
-          </div>
-          <div className="form-field">
-            <label className="form-label-sm">Descripción</label>
-            <Input value={p.description || ''} onChange={e => setEditingPermission({...p, description: e.target.value})} className="form-input-dark" />
-          </div>
-          <div className="form-field">
-            <label className="form-label-sm">Módulo</label>
-            <select 
-                className="form-input-dark w-full p-2 rounded bg-[#1a1f2c] border-gray-800 text-sm" 
-                value={p.module || ''} 
-                onChange={e => setEditingPermission({...p, module: e.target.value})}
-            >
-                <option value="">Seleccione un módulo</option>
-                {modules.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-            </select>
-          </div>
-        </div>
-      )
-    }
-  };
-
   return (
-    <div className="h-full flex flex-col space-y-4">
-      {/* Tabs Selector */}
-      <div className="flex space-x-2 bg-gray-900/50 p-1 rounded-lg self-start">
-        <Button 
-            variant={activeTab === 'roles' ? 'secondary' : 'ghost'} 
-            onClick={() => setActiveTab('roles')}
-            className="text-xs h-8"
-        >
-            Roles
-        </Button>
-        <Button 
-            variant={activeTab === 'modules' ? 'secondary' : 'ghost'} 
-            onClick={() => setActiveTab('modules')}
-            className="text-xs h-8"
-        >
-            Módulos
-        </Button>
-        <Button 
-            variant={activeTab === 'permissions' ? 'secondary' : 'ghost'} 
-            onClick={() => setActiveTab('permissions')}
-            className="text-xs h-8"
-        >
-            Permisos
-        </Button>
-      </div>
-
-      <div className="flex-1 min-h-0">
-        {activeTab === 'roles' && (
-          <MasterDetailManager<Role>
-            data={roles}
-            totalCount={totalCount}
-            page={page}
-            setPage={setPage}
-            isLoading={loading}
-            isSaving={isSaving}
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            selectedItem={editingRole}
-            onSelectItem={handleStartEdit}
-            onItemChange={(updated) => setEditingRole(prev => ({ ...prev, ...updated }))}
-            onAddNew={() => setEditingRole({ name: '', description: '', permissions: [] })}
-            config={roleConfig}
-          />
-        )}
-
-        {activeTab === 'modules' && (
-          <MasterDetailManager<Module>
-            data={modules}
-            isLoading={loading}
-            isSaving={isSaving}
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            selectedItem={editingModule}
-            onSelectItem={setEditingModule}
-            onItemChange={(updated) => setEditingModule(prev => ({ ...prev, ...updated }))}
-            onAddNew={() => setEditingModule({ name: '', label: '', icon: '', route: '', order: 0, is_active: true })}
-            config={moduleConfig}
-          />
-        )}
-
-        {activeTab === 'permissions' && (
-          <MasterDetailManager<Permission>
-            data={permissions}
-            isLoading={loading}
-            isSaving={isSaving}
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            selectedItem={editingPermission}
-            onSelectItem={setEditingPermission}
-            onItemChange={(updated) => setEditingPermission(prev => ({ ...prev, ...updated }))}
-            onAddNew={() => setEditingPermission({ action: '', description: '', category: 'General', module: '' })}
-            config={permConfig}
-          />
-        )}
-      </div>
+    <div className="h-full">
+      <MasterDetailManager<Role>
+        data={roles}
+        totalCount={rolesCount}
+        page={page}
+        setPage={setPage}
+        isLoading={loading}
+        isSaving={isSaving}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        selectedItem={editingRole}
+        onSelectItem={handleStartEdit}
+        onItemChange={(updated) => setEditingRole(prev => ({ ...prev, ...updated }))}
+        onAddNew={() => setEditingRole({ name: '', description: '', permissions: [] })}
+        config={roleConfig}
+      />
     </div>
   );
 };

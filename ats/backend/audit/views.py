@@ -1,5 +1,6 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
+from ats.mixins import CachedListMixin
 from .models import Export
 from .serializers import ExportSerializer, ExportRequestSerializer
 from .tasks import process_data_export_task
@@ -49,7 +50,7 @@ class ExportCreateView(generics.CreateAPIView):
         export.save()
 
         # 5. Invalidar caché Redis del usuario para que la lista se refresque
-        ExportsPagination.invalidate('exports', str(request.user.id))
+        CachedListMixin.invalidate_cache('export')
 
         return Response({
             "message": "Exportación iniciada. Recibirá una notificación cuando esté lista.",
@@ -59,20 +60,18 @@ class ExportCreateView(generics.CreateAPIView):
         }, status=status.HTTP_202_ACCEPTED)
 
 
-class ExportListView(generics.ListAPIView):
+class ExportListView(CachedListMixin, generics.ListAPIView):
     """
     GET: Listar exportaciones del usuario con paginación cacheada en Redis.
     Query params: page (default 1), page_size (default 10, max 100).
     """
+    cache_timeout = 60 # 1 minuto para exportaciones
     serializer_class = ExportSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = ExportsPagination
 
     def get_queryset(self):
         return Export.objects.filter(user=self.request.user).order_by('-created_at')
-
-    def list(self, request, *args, **kwargs):
-        return ExportsPagination.cached_list(self, request, *args, **kwargs)
 
 
 class ExportDetailView(generics.RetrieveAPIView):

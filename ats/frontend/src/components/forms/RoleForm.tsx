@@ -8,24 +8,24 @@ import { ChevronDown, Lock, InfoIcon } from 'lucide-react';
 
 interface RoleFormProps {
   role: Partial<Role>;
-  permissionsByCategory: Record<string, Permission[]>;
+  permissionsByModule: Record<string, Permission[]>;
   initialPermissions: string[];
-  collapsedCategories: Record<string, boolean>;
+  collapsedModules: Record<string, boolean>;
   onRoleChange: (updated: Partial<Role>) => void;
   onTogglePermission: (action: string) => void;
-  onToggleCategory: (category: string, enable: boolean) => void;
-  onToggleCategoryCollapse: (category: string) => void;
+  onToggleModule: (moduleName: string, enable: boolean) => void;
+  onToggleModuleCollapse: (moduleName: string) => void;
 }
 
 export const RoleForm: React.FC<RoleFormProps> = ({
   role,
-  permissionsByCategory,
+  permissionsByModule,
   initialPermissions,
-  collapsedCategories,
+  collapsedModules,
   onRoleChange,
   onTogglePermission,
-  onToggleCategory,
-  onToggleCategoryCollapse,
+  onToggleModule,
+  onToggleModuleCollapse,
 }) => {
   return (
     <div className="space-y-8">
@@ -77,19 +77,19 @@ export const RoleForm: React.FC<RoleFormProps> = ({
 
         <div className="pr-4 -mr-4">
           <div className="space-y-6">
-            {Object.entries(permissionsByCategory).map(([category, perms]) => {
+            {Object.entries(permissionsByModule).map(([moduleName, perms]) => {
               const allEnabled = perms.every(p => role.permissions?.includes(p.action));
-              const isCollapsed = collapsedCategories[category];
+              const isCollapsed = collapsedModules[moduleName];
 
               return (
-                <div key={category} className="permission-category-card">
+                <div key={moduleName} className="permission-category-card">
                   <div
                     className="permission-category-header"
-                    onClick={() => onToggleCategoryCollapse(category)}
+                    onClick={() => onToggleModuleCollapse(moduleName)}
                   >
                     <div className="permission-category-title-wrapper">
                       <div className="permission-category-dot" />
-                      <h4 className="permission-category-title">{category}</h4>
+                      <h4 className="permission-category-title">{moduleName}</h4>
                     </div>
                     <div className="permission-category-actions">
                       <Button
@@ -98,7 +98,7 @@ export const RoleForm: React.FC<RoleFormProps> = ({
                         className="permission-btn-ghost"
                         onClick={e => {
                           e.stopPropagation();
-                          onToggleCategory(category, !allEnabled);
+                          onToggleModule(moduleName, !allEnabled);
                         }}
                       >
                         {allEnabled ? 'Desactivar Grupo' : 'Activar Grupo'}
