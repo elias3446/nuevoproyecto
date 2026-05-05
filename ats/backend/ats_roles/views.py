@@ -52,6 +52,7 @@ class UIConfigView(APIView):
 class ModuleViewSet(viewsets.ModelViewSet):
     queryset = Module.objects.all().order_by('order')
     serializer_class = ModuleSerializer
+    pagination_class = None
     
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:

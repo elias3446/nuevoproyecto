@@ -2,11 +2,22 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/integrations/backend/client";
 import { toast } from "sonner";
 
+export interface Module {
+  id: string;
+  name: string;
+  label: string;
+  icon?: string;
+  route?: string;
+  order: number;
+  is_active: boolean;
+}
+
 export interface Permission {
   id: string;
   action: string;
   description: string;
   category: string;
+  module?: string; // ID del módulo
 }
 
 export interface Role {
@@ -39,7 +50,16 @@ export const useRoles = (page: number = 1) => {
     queryKey: ['permissions-catalog'],
     queryFn: async () => {
       const response = await api.get('/roles/permissions/');
-      return response.data;
+      return Array.isArray(response.data) ? response.data : response.data.results;
+    }
+  });
+
+  // Obtener catálogo de módulos
+  const modulesQuery = useQuery<Module[]>({
+    queryKey: ['modules-catalog'],
+    queryFn: async () => {
+      const response = await api.get('/roles/modules/');
+      return Array.isArray(response.data) ? response.data : response.data.results;
     }
   });
 
@@ -60,12 +80,43 @@ export const useRoles = (page: number = 1) => {
     }
   });
 
+  // Mutación para módulos
+  const saveModuleMutation = useMutation({
+    mutationFn: async (module: Partial<Module>) => {
+      if (module.id) {
+        return api.patch(`/roles/modules/${module.id}/`, module);
+      }
+      return api.post('/roles/modules/', module);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['modules-catalog'] });
+      toast.success("Módulo guardado");
+    }
+  });
+
+  // Mutación para permisos
+  const savePermissionMutation = useMutation({
+    mutationFn: async (permission: Partial<Permission>) => {
+      if (permission.id) {
+        return api.patch(`/roles/permissions/${permission.id}/`, permission);
+      }
+      return api.post('/roles/permissions/', permission);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['permissions-catalog'] });
+      toast.success("Permiso guardado");
+    }
+  });
+
   return {
     roles: rolesQuery.data?.results || [],
     totalCount: rolesQuery.data?.count || 0,
     permissions: permissionsQuery.data || [],
-    loading: rolesQuery.isLoading || permissionsQuery.isLoading,
+    modules: modulesQuery.data || [],
+    loading: rolesQuery.isLoading || permissionsQuery.isLoading || modulesQuery.isLoading,
     saveRole: saveRoleMutation.mutateAsync,
-    isSaving: saveRoleMutation.isPending
+    isSaving: saveRoleMutation.isPending,
+    saveModule: saveModuleMutation.mutateAsync,
+    savePermission: savePermissionMutation.mutateAsync,
   };
 };
